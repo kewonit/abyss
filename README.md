@@ -2,6 +2,8 @@
 
 Real-time network traffic dashboard. Captures live connections, geolocates endpoints, and renders them on an interactive world map.
 
+<img width="2041" height="1147" alt="Screenshot 2026-02-26 214044" src="https://github.com/user-attachments/assets/966b281a-7a9b-40e9-84de-e6097fc8409b" />
+
 ---
 
 ## Architecture
