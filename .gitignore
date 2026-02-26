@@ -1,0 +1,63 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+visualizer/dist/
+visualizer/.vite/
+visualizer/coverage/
+visualizer/*.tsbuildinfo
+sniffer-core/build/
+sniffer-core/**/build/
+tauri-host/src-tauri/target/
+
+# IDE
+.vscode/launch.json
+.vscode/tasks.json
+.idea/
+.github/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# C++ build artifacts
+*.o
+*.obj
+*.exe
+*.lib
+*.dll
+*.so
+*.dylib
+*.pdb
+*.ilk
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+Makefile
+
+# TypeScript
+*.tsbuildinfo
+
+# Rust
+target/
+Cargo.lock
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Npcap SDK (don't commit third-party SDK)
+npcap-sdk/

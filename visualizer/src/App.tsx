@@ -1,0 +1,67 @@
+import React, { useEffect, useRef } from "react";
+import { NetworkMap } from "./components/NetworkMap";
+import { TopBar } from "./components/TopBar";
+import { StatsPanel } from "./components/StatsPanel";
+import { useTelemetryStore } from "./telemetry/store";
+import { TelemetryClient } from "./telemetry/client";
+import { TelemetryFrame } from "./telemetry/schema";
+
+function isTauri(): boolean {
+  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+}
+
+export default function App() {
+  const clientRef = useRef<TelemetryClient | null>(null);
+  const ingestFrame = useTelemetryStore((s) => s.ingestFrame);
+  const setConnected = useTelemetryStore((s) => s.setConnected);
+
+  useEffect(() => {
+    if (isTauri()) {
+      let cleanup: (() => void) | null = null;
+      let active = true;
+
+      setConnected(false);
+
+      import("@tauri-apps/api/event")
+        .then(({ listen }) => {
+          if (!active) return;
+          listen<TelemetryFrame>("telemetry-frame", (event) => {
+            ingestFrame(event.payload);
+            setConnected(true);
+          }).then((unlisten) => {
+            if (active) cleanup = unlisten;
+            else unlisten();
+          });
+        })
+        .catch(() => {
+          if (active) setConnected(false);
+        });
+
+      return () => {
+        active = false;
+        cleanup?.();
+      };
+    } else {
+      const client = new TelemetryClient();
+      clientRef.current = client;
+
+      client.onFrame((frame) => ingestFrame(frame));
+      client.onStatusChange((connected) => setConnected(connected));
+      client.connect("ws://127.0.0.1:9770");
+
+      return () => {
+        client.disconnect();
+      };
+    }
+  }, [ingestFrame, setConnected]);
+
+  return (
+    <div className="app-root">
+      <NetworkMap />
+      <div className="overlay-ui">
+        <StatsPanel />
+        <TopBar />
+      </div>
+    </div>
+  );
+}

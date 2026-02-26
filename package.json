@@ -1,0 +1,41 @@
+{
+  "name": "abyss",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Living abyssal network visualizer — packet sniffer daemon + WebGL deep-ocean ecosystem",
+  "scripts": {
+    "dev": "cd tauri-host/src-tauri && cargo tauri dev",
+    "build": "cd tauri-host/src-tauri && cargo tauri build",
+    "dev:vite": "cd visualizer && npm run dev",
+    "dev:monitor": "node monitor.mjs",
+    "install:all": "cd visualizer && npm install"
+  },
+  "keywords": [
+    "network",
+    "visualizer",
+    "packet-sniffer",
+    "webgl",
+    "tauri",
+    "three.js"
+  ],
+  "license": "MIT",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kewonit/abyss.git"
+  },
+  "author": "",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/kewonit/abyss/issues"
+  },
+  "homepage": "https://github.com/kewonit/abyss#readme",
+  "dependencies": {
+    "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "png-to-ico": "^3.0.1",
+    "sharp": "^0.34.5"
+  }
+}
