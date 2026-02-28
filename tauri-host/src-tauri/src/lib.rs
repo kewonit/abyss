@@ -1,9 +1,13 @@
+mod db;
+mod writer;
+
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::process::Command as StdCommand;
+use std::path::PathBuf;
+use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use tauri::Emitter;
-#[cfg(debug_assertions)]
 use tauri::Manager;
 
 #[cfg(target_os = "windows")]
@@ -94,6 +98,27 @@ pub struct TelemetryFrame {
     pub net: NetMetrics,
     pub proto: ProtoCounters,
     pub flows: Vec<GeoFlow>,
+}
+
+/// Shared application state accessible by Tauri commands and the monitor loop.
+pub struct AppState {
+    /// Channel sender for dispatching write commands to the persistence thread.
+    pub writer_tx: std::sync::mpsc::Sender<writer::WriteCommand>,
+    /// Path to the SQLite database file.
+    pub db_path: PathBuf,
+    /// Currently recording session ID (None if no active session).
+    pub current_session_id: Mutex<Option<String>>,
+    /// Last-known local geo position (set by monitor loop, read by manual starts).
+    pub local_geo: Mutex<LocalGeoCache>,
+}
+
+/// Cached local geo data for reuse when manually starting sessions.
+#[derive(Clone, Default)]
+pub struct LocalGeoCache {
+    pub city: String,
+    pub country: String,
+    pub lat: f64,
+    pub lng: f64,
 }
 
 #[derive(Clone, Copy)]
@@ -723,6 +748,10 @@ fn build_frame(
     };
 
     let active_flow_count = flows.len() as u32;
+    // Sort by throughput descending so the most active flows survive truncation
+    if flows.len() > MAX_FLOWS_PER_FRAME {
+        flows.sort_unstable_by(|a, b| b.bps.partial_cmp(&a.bps).unwrap_or(std::cmp::Ordering::Equal));
+    }
     flows.truncate(MAX_FLOWS_PER_FRAME);
 
     TelemetryFrame {
@@ -764,7 +793,7 @@ fn is_material_change(prev: Option<FrameSnapshot>, next: &TelemetryFrame) -> boo
     (next.net.latency_ms - previous.latency_ms).abs() >= MATERIAL_LATENCY_DELTA_MS
 }
 
-async fn monitor_loop(app: tauri::AppHandle) {
+async fn monitor_loop(app: tauri::AppHandle, writer_tx: std::sync::mpsc::Sender<writer::WriteCommand>) {
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(5))
         .build()
@@ -776,6 +805,36 @@ async fn monitor_loop(app: tauri::AppHandle) {
         "[Abyss] Local: {}, {} ({:.2}, {:.2})",
         local_geo.city, local_geo.country, local_geo.lat, local_geo.lng
     );
+
+    // Cache the detected geo in AppState for manual session starts
+    if let Some(state) = app.try_state::<AppState>() {
+        if let Ok(mut geo_cache) = state.local_geo.lock() {
+            geo_cache.city = local_geo.city.clone();
+            geo_cache.country = local_geo.country.clone();
+            geo_cache.lat = local_geo.lat;
+            geo_cache.lng = local_geo.lng;
+        }
+    }
+
+    // Auto-start a recording session with detected local geo
+    {
+        let session_id = uuid::Uuid::new_v4().to_string();
+        let now = chrono::Local::now();
+        let session_name = now.format("Session \u{2014} %b %d, %Y %I:%M %p").to_string();
+        let _ = writer_tx.send(writer::WriteCommand::StartSession {
+            id: session_id.clone(),
+            name: session_name,
+            local_city: local_geo.city.clone(),
+            local_country: local_geo.country.clone(),
+            local_lat: local_geo.lat,
+            local_lng: local_geo.lng,
+        });
+        if let Some(state) = app.try_state::<AppState>() {
+            *state.current_session_id.lock().unwrap_or_else(|e| e.into_inner()) =
+                Some(session_id.clone());
+        }
+        println!("[Abyss] Session started: {session_id}");
+    }
 
     let mut geo_cache: HashMap<String, GeoCacheEntry> = HashMap::with_capacity(256);
     let mut prev_keys: HashSet<String> = HashSet::with_capacity(64);
@@ -793,6 +852,7 @@ async fn monitor_loop(app: tauri::AppHandle) {
     let mut flow_presence: HashMap<String, (ParsedConnection, Instant)> = HashMap::new();
     let mut process_names: HashMap<u32, String> = HashMap::new();
     let mut last_process_refresh = Instant::now() - Duration::from_secs(PROCESS_CACHE_TTL_SECS + 1);
+    let mut last_forced_process_refresh = Instant::now();
     let mut flow_first_seen: HashMap<String, f64> = HashMap::new();
 
     println!("[Abyss] Monitor started — emitting telemetry-frame events @ 1 Hz");
@@ -898,10 +958,19 @@ async fn monitor_loop(app: tauri::AppHandle) {
         let stable_connections: Vec<ParsedConnection> =
             flow_presence.values().map(|(conn, _)| conn.clone()).collect();
 
+        // Only spawn tasklist when new PIDs appear or every 60s as fallback
         if last_process_refresh.elapsed() >= Duration::from_secs(PROCESS_CACHE_TTL_SECS) {
-            process_names = tokio::task::spawn_blocking(resolve_process_names)
-                .await
-                .unwrap_or_default();
+            let has_new_pids = stable_connections
+                .iter()
+                .any(|c| c.pid > 0 && !process_names.contains_key(&c.pid));
+            let force_refresh = last_forced_process_refresh.elapsed() >= Duration::from_secs(60);
+            if has_new_pids || force_refresh {
+                process_names = tokio::task::spawn_blocking(resolve_process_names)
+                    .await
+                    .unwrap_or_default();
+                last_forced_process_refresh = Instant::now();
+            }
+            // Always reset check timer to avoid rescanning every tick
             last_process_refresh = Instant::now();
         }
 
@@ -993,6 +1062,9 @@ async fn monitor_loop(app: tauri::AppHandle) {
             }
         }
 
+        // Send frame to writer for session persistence (writer handles sampling)
+        let _ = writer_tx.send(writer::WriteCommand::Frame(Box::new(frame)));
+
         tokio::time::sleep(Duration::from_millis(TICK_MS)).await;
     }
 }
@@ -1010,18 +1082,766 @@ async fn fetch_cables() -> Result<String, String> {
     Ok(text)
 }
 
+// ─── Session management Tauri commands ──────────────────────────────────────
+
+#[tauri::command]
+async fn cmd_list_sessions(
+    state: tauri::State<'_, AppState>,
+    limit: Option<u32>,
+    offset: Option<u32>,
+) -> Result<Vec<db::SessionInfo>, String> {
+    let db_path = state.db_path.clone();
+    let limit = limit.unwrap_or(50);
+    let offset = offset.unwrap_or(0);
+    tokio::task::spawn_blocking(move || {
+        let conn = db::open_database(&db_path).map_err(|e| e.to_string())?;
+        db::list_sessions(&conn, limit, offset).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn cmd_get_session(
+    state: tauri::State<'_, AppState>,
+    id: String,
+) -> Result<Option<db::SessionInfo>, String> {
+    let db_path = state.db_path.clone();
+    tokio::task::spawn_blocking(move || {
+        let conn = db::open_database(&db_path).map_err(|e| e.to_string())?;
+        db::get_session(&conn, &id).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn cmd_delete_session(
+    state: tauri::State<'_, AppState>,
+    id: String,
+) -> Result<bool, String> {
+    // Prevent deleting the currently recording session
+    {
+        let guard = state
+            .current_session_id
+            .lock()
+            .map_err(|e| e.to_string())?;
+        if guard.as_deref() == Some(id.as_str()) {
+            return Err("Cannot delete the active recording session".into());
+        }
+    }
+
+    let db_path = state.db_path.clone();
+    tokio::task::spawn_blocking(move || {
+        let conn = db::open_database(&db_path).map_err(|e| e.to_string())?;
+        db::delete_session(&conn, &id).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn cmd_get_session_frames(
+    state: tauri::State<'_, AppState>,
+    session_id: String,
+    start_t: Option<f64>,
+    end_t: Option<f64>,
+    max_points: Option<u32>,
+) -> Result<Vec<db::FrameRecord>, String> {
+    let db_path = state.db_path.clone();
+    tokio::task::spawn_blocking(move || {
+        let conn = db::open_database(&db_path).map_err(|e| e.to_string())?;
+        db::get_session_frames(&conn, &session_id, start_t, end_t, max_points)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn cmd_get_session_flows(
+    state: tauri::State<'_, AppState>,
+    session_id: String,
+    process_filter: Option<String>,
+    country_filter: Option<String>,
+    limit: Option<u32>,
+) -> Result<Vec<db::FlowSnapshotRecord>, String> {
+    let db_path = state.db_path.clone();
+    tokio::task::spawn_blocking(move || {
+        let conn = db::open_database(&db_path).map_err(|e| e.to_string())?;
+        db::get_session_flows(
+            &conn,
+            &session_id,
+            process_filter.as_deref(),
+            country_filter.as_deref(),
+            limit.unwrap_or(100),
+        )
+        .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn cmd_get_session_destinations(
+    state: tauri::State<'_, AppState>,
+    session_id: String,
+    sort_by: Option<String>,
+    limit: Option<u32>,
+) -> Result<Vec<db::DestinationRecord>, String> {
+    let db_path = state.db_path.clone();
+    tokio::task::spawn_blocking(move || {
+        let conn = db::open_database(&db_path).map_err(|e| e.to_string())?;
+        db::get_session_destinations(
+            &conn,
+            &session_id,
+            sort_by.as_deref().unwrap_or("bytes"),
+            limit.unwrap_or(50),
+        )
+        .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn cmd_get_process_usage(
+    state: tauri::State<'_, AppState>,
+    session_id: String,
+    process_name: Option<String>,
+    limit: Option<u32>,
+) -> Result<Vec<db::ProcessUsageRecord>, String> {
+    let db_path = state.db_path.clone();
+    tokio::task::spawn_blocking(move || {
+        let conn = db::open_database(&db_path).map_err(|e| e.to_string())?;
+        db::get_process_usage(
+            &conn,
+            &session_id,
+            process_name.as_deref(),
+            limit.unwrap_or(500),
+        )
+        .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn cmd_get_global_stats(
+    state: tauri::State<'_, AppState>,
+) -> Result<db::GlobalStats, String> {
+    let db_path = state.db_path.clone();
+    tokio::task::spawn_blocking(move || {
+        let conn = db::open_database(&db_path).map_err(|e| e.to_string())?;
+        db::get_global_stats(&conn, &db_path).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+fn cmd_update_session_meta(
+    state: tauri::State<'_, AppState>,
+    id: String,
+    name: Option<String>,
+    notes: Option<String>,
+    tags: Option<String>,
+) -> Result<(), String> {
+    state
+        .writer_tx
+        .send(writer::WriteCommand::UpdateMeta {
+            id,
+            name,
+            notes,
+            tags,
+        })
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn cmd_start_session(
+    state: tauri::State<'_, AppState>,
+    name: Option<String>,
+) -> Result<String, String> {
+    // Stop any existing session first
+    {
+        let mut guard = state
+            .current_session_id
+            .lock()
+            .map_err(|e| e.to_string())?;
+        if let Some(old_id) = guard.take() {
+            let _ = state
+                .writer_tx
+                .send(writer::WriteCommand::EndSession { id: old_id });
+        }
+    }
+
+    let session_id = uuid::Uuid::new_v4().to_string();
+    let now = chrono::Local::now();
+    let session_name =
+        name.unwrap_or_else(|| now.format("Session \u{2014} %b %d, %Y %I:%M %p").to_string());
+
+    // Use cached geo data so manually-started sessions have correct map coordinates
+    let geo = state
+        .local_geo
+        .lock()
+        .map(|g| g.clone())
+        .unwrap_or_default();
+
+    state
+        .writer_tx
+        .send(writer::WriteCommand::StartSession {
+            id: session_id.clone(),
+            name: session_name,
+            local_city: geo.city,
+            local_country: geo.country,
+            local_lat: geo.lat,
+            local_lng: geo.lng,
+        })
+        .map_err(|e| e.to_string())?;
+
+    *state
+        .current_session_id
+        .lock()
+        .map_err(|e| e.to_string())? = Some(session_id.clone());
+
+    Ok(session_id)
+}
+
+#[tauri::command]
+fn cmd_stop_session(state: tauri::State<'_, AppState>) -> Result<Option<String>, String> {
+    let mut guard = state
+        .current_session_id
+        .lock()
+        .map_err(|e| e.to_string())?;
+    if let Some(id) = guard.take() {
+        let _ = state
+            .writer_tx
+            .send(writer::WriteCommand::EndSession { id: id.clone() });
+        Ok(Some(id))
+    } else {
+        Ok(None)
+    }
+}
+
+#[tauri::command]
+fn cmd_get_current_session(state: tauri::State<'_, AppState>) -> Result<Option<String>, String> {
+    let guard = state
+        .current_session_id
+        .lock()
+        .map_err(|e| e.to_string())?;
+    Ok(guard.clone())
+}
+
+#[tauri::command]
+async fn cmd_cleanup_sessions(
+    state: tauri::State<'_, AppState>,
+    days: Option<u32>,
+) -> Result<u32, String> {
+    let db_path = state.db_path.clone();
+    let days = days.unwrap_or(90);
+    tokio::task::spawn_blocking(move || {
+        let conn = db::open_database(&db_path).map_err(|e| e.to_string())?;
+        db::cleanup_old_sessions(&conn, days).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn cmd_cleanup_excess_sessions(
+    state: tauri::State<'_, AppState>,
+    max_count: u32,
+) -> Result<u32, String> {
+    let db_path = state.db_path.clone();
+    tokio::task::spawn_blocking(move || {
+        let conn = db::open_database(&db_path).map_err(|e| e.to_string())?;
+        db::cleanup_excess_sessions(&conn, max_count).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn cmd_delete_all_sessions(
+    state: tauri::State<'_, AppState>,
+) -> Result<u32, String> {
+    let db_path = state.db_path.clone();
+    tokio::task::spawn_blocking(move || {
+        let conn = db::open_database(&db_path).map_err(|e| e.to_string())?;
+        db::delete_all_sessions(&conn).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn cmd_get_database_path(
+    state: tauri::State<'_, AppState>,
+) -> Result<String, String> {
+    Ok(db::get_database_path(&state.db_path))
+}
+
+#[tauri::command]
+async fn cmd_open_data_folder(
+    state: tauri::State<'_, AppState>,
+) -> Result<(), String> {
+    let db_path = state.db_path.clone();
+    let folder = db_path
+        .parent()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_else(|| db_path.to_string_lossy().to_string());
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(&folder)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&folder)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&folder)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn cmd_get_playback_data(
+    state: tauri::State<'_, AppState>,
+    session_id: String,
+) -> Result<db::PlaybackData, String> {
+    let db_path = state.db_path.clone();
+    tokio::task::spawn_blocking(move || {
+        let conn = db::open_database(&db_path).map_err(|e| e.to_string())?;
+        db::get_playback_data(&conn, &session_id)
+            .map_err(|e| e.to_string())?
+            .ok_or_else(|| "Session not found".to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn cmd_get_daily_usage(
+    state: tauri::State<'_, AppState>,
+    range_days: u32,
+) -> Result<Vec<db::DailyUsage>, String> {
+    let db_path = state.db_path.clone();
+    tokio::task::spawn_blocking(move || {
+        let conn = db::open_database(&db_path).map_err(|e| e.to_string())?;
+        db::get_daily_usage(&conn, range_days).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn cmd_get_top_destinations(
+    state: tauri::State<'_, AppState>,
+    range_days: u32,
+    limit: u32,
+) -> Result<Vec<db::TopDestination>, String> {
+    let db_path = state.db_path.clone();
+    tokio::task::spawn_blocking(move || {
+        let conn = db::open_database(&db_path).map_err(|e| e.to_string())?;
+        db::get_top_destinations(&conn, range_days, limit).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn cmd_get_top_apps(
+    state: tauri::State<'_, AppState>,
+    range_days: u32,
+    limit: u32,
+) -> Result<Vec<db::TopApp>, String> {
+    let db_path = state.db_path.clone();
+    tokio::task::spawn_blocking(move || {
+        let conn = db::open_database(&db_path).map_err(|e| e.to_string())?;
+        db::get_top_apps(&conn, range_days, limit).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn cmd_get_session_insights(
+    state: tauri::State<'_, AppState>,
+    session_id: String,
+) -> Result<db::SessionInsights, String> {
+    let db_path = state.db_path.clone();
+    tokio::task::spawn_blocking(move || {
+        let conn = db::open_database(&db_path).map_err(|e| e.to_string())?;
+        db::compute_session_insights(&conn, &session_id).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+// ─── Tier 6: Baseline, Anomaly, Health, Tagging ─────────────────────────────
+
+#[tauri::command]
+async fn cmd_compute_baseline(
+    state: tauri::State<'_, AppState>,
+    range_days: Option<u32>,
+) -> Result<u32, String> {
+    let db_path = state.db_path.clone();
+    let days = range_days.unwrap_or(90);
+    tokio::task::spawn_blocking(move || {
+        let conn = db::open_database(&db_path).map_err(|e| e.to_string())?;
+        db::compute_baseline(&conn, days).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn cmd_get_baseline(
+    state: tauri::State<'_, AppState>,
+) -> Result<Vec<db::BaselineEntry>, String> {
+    let db_path = state.db_path.clone();
+    tokio::task::spawn_blocking(move || {
+        let conn = db::open_database(&db_path).map_err(|e| e.to_string())?;
+        db::get_baseline_profile(&conn).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn cmd_detect_anomalies(
+    state: tauri::State<'_, AppState>,
+    session_id: String,
+) -> Result<Vec<db::Anomaly>, String> {
+    let db_path = state.db_path.clone();
+    tokio::task::spawn_blocking(move || {
+        let conn = db::open_database(&db_path).map_err(|e| e.to_string())?;
+        db::detect_anomalies(&conn, &session_id).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn cmd_get_health_score(
+    state: tauri::State<'_, AppState>,
+    hours: Option<u32>,
+) -> Result<db::HealthScore, String> {
+    let db_path = state.db_path.clone();
+    let h = hours.unwrap_or(24);
+    tokio::task::spawn_blocking(move || {
+        let conn = db::open_database(&db_path).map_err(|e| e.to_string())?;
+        db::compute_health_score(&conn, h).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn cmd_search_sessions(
+    state: tauri::State<'_, AppState>,
+    query: String,
+    limit: Option<u32>,
+) -> Result<Vec<db::SessionInfo>, String> {
+    let db_path = state.db_path.clone();
+    let lim = limit.unwrap_or(50);
+    tokio::task::spawn_blocking(move || {
+        let conn = db::open_database(&db_path).map_err(|e| e.to_string())?;
+        db::search_sessions(&conn, &query, lim).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn cmd_update_session_tags(
+    state: tauri::State<'_, AppState>,
+    session_id: String,
+    tags: Vec<String>,
+) -> Result<(), String> {
+    let db_path = state.db_path.clone();
+    tokio::task::spawn_blocking(move || {
+        let conn = db::open_database(&db_path).map_err(|e| e.to_string())?;
+        db::update_session_tags(&conn, &session_id, &tags).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn cmd_export_session_csv(
+    state: tauri::State<'_, AppState>,
+    session_id: String,
+    path: String,
+) -> Result<String, String> {
+    let db_path = state.db_path.clone();
+    tokio::task::spawn_blocking(move || {
+        let conn = db::open_database(&db_path).map_err(|e| e.to_string())?;
+        let session = db::get_session(&conn, &session_id)
+            .map_err(|e| e.to_string())?
+            .ok_or_else(|| "Session not found".to_string())?;
+        let flows = db::get_session_flows(&conn, &session_id, None, None, 50000)
+            .map_err(|e| e.to_string())?;
+
+        let mut csv = String::with_capacity(flows.len() * 200);
+        csv.push_str("flow_id,src_ip,src_city,src_country,dst_ip,dst_city,dst_country,dst_org,bps,pps,rtt_ms,protocol,direction,port,service,process,pid\n");
+
+        for f in &flows {
+            csv.push_str(&format!(
+                "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n",
+                escape_csv(&f.flow_id),
+                escape_csv(f.src_ip.as_deref().unwrap_or("")),
+                escape_csv(f.src_city.as_deref().unwrap_or("")),
+                escape_csv(f.src_country.as_deref().unwrap_or("")),
+                escape_csv(&f.dst_ip),
+                escape_csv(f.dst_city.as_deref().unwrap_or("")),
+                escape_csv(f.dst_country.as_deref().unwrap_or("")),
+                escape_csv(f.dst_org.as_deref().unwrap_or("")),
+                f.bps,
+                f.pps,
+                f.rtt,
+                escape_csv(f.protocol.as_deref().unwrap_or("")),
+                escape_csv(f.dir.as_deref().unwrap_or("")),
+                f.port.unwrap_or(0),
+                escape_csv(f.service.as_deref().unwrap_or("")),
+                escape_csv(f.process.as_deref().unwrap_or("")),
+                f.pid.unwrap_or(0),
+            ));
+        }
+
+        // Ensure parent directory exists
+        if let Some(parent) = std::path::Path::new(&path).parent() {
+            if !parent.exists() {
+                return Err(format!("Export directory does not exist: {}", parent.display()));
+            }
+        }
+
+        std::fs::write(&path, &csv).map_err(|e| format!("Failed to write CSV: {e}"))?;
+        Ok(format!(
+            "Exported {} flows from '{}' to {}",
+            flows.len(),
+            session.name,
+            path
+        ))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn cmd_export_session_json(
+    state: tauri::State<'_, AppState>,
+    session_id: String,
+    path: String,
+) -> Result<String, String> {
+    let db_path = state.db_path.clone();
+    tokio::task::spawn_blocking(move || {
+        let conn = db::open_database(&db_path).map_err(|e| e.to_string())?;
+        let session = db::get_session(&conn, &session_id)
+            .map_err(|e| e.to_string())?
+            .ok_or_else(|| "Session not found".to_string())?;
+        let frames = db::get_session_frames(&conn, &session_id, None, None, None)
+            .map_err(|e| e.to_string())?;
+        let flows = db::get_session_flows(&conn, &session_id, None, None, 50000)
+            .map_err(|e| e.to_string())?;
+        let destinations = db::get_session_destinations(&conn, &session_id, "bytes", 1000)
+            .map_err(|e| e.to_string())?;
+        let processes = db::get_process_usage(&conn, &session_id, None, 5000)
+            .map_err(|e| e.to_string())?;
+
+        #[derive(serde::Serialize)]
+        #[serde(rename_all = "camelCase")]
+        struct ExportPayload {
+            session: db::SessionInfo,
+            frames: Vec<db::FrameRecord>,
+            flows: Vec<db::FlowSnapshotRecord>,
+            destinations: Vec<db::DestinationRecord>,
+            processes: Vec<db::ProcessUsageRecord>,
+        }
+
+        let payload = ExportPayload {
+            session,
+            frames,
+            flows,
+            destinations,
+            processes,
+        };
+
+        let json = serde_json::to_string_pretty(&payload)
+            .map_err(|e| format!("JSON serialization failed: {e}"))?;
+
+        // Ensure parent directory exists
+        if let Some(parent) = std::path::Path::new(&path).parent() {
+            if !parent.exists() {
+                return Err(format!("Export directory does not exist: {}", parent.display()));
+            }
+        }
+
+        std::fs::write(&path, &json).map_err(|e| format!("Failed to write JSON: {e}"))?;
+        Ok(format!(
+            "Exported session '{}' to {}",
+            payload.session.name, path
+        ))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Escape a string for CSV (wrap in quotes if it contains commas, quotes, newlines, or carriage returns).
+fn escape_csv(s: &str) -> String {
+    if s.contains(',') || s.contains('"') || s.contains('\n') || s.contains('\r') {
+        format!("\"{}\"", s.replace('"', "\"\""))
+    } else {
+        s.to_string()
+    }
+}
+
+// ─── Application entry point ────────────────────────────────────────────────
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![fetch_cables])
+        .invoke_handler(tauri::generate_handler![
+            fetch_cables,
+            cmd_list_sessions,
+            cmd_get_session,
+            cmd_delete_session,
+            cmd_get_session_frames,
+            cmd_get_session_flows,
+            cmd_get_session_destinations,
+            cmd_get_process_usage,
+            cmd_get_global_stats,
+            cmd_update_session_meta,
+            cmd_start_session,
+            cmd_stop_session,
+            cmd_get_current_session,
+            cmd_cleanup_sessions,
+            cmd_export_session_csv,
+            cmd_export_session_json,
+            cmd_get_playback_data,
+            cmd_get_daily_usage,
+            cmd_get_top_destinations,
+            cmd_get_top_apps,
+            cmd_get_session_insights,
+            cmd_cleanup_excess_sessions,
+            cmd_delete_all_sessions,
+            cmd_get_database_path,
+            cmd_open_data_folder,
+            cmd_compute_baseline,
+            cmd_get_baseline,
+            cmd_detect_anomalies,
+            cmd_get_health_score,
+            cmd_search_sessions,
+            cmd_update_session_tags,
+        ])
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::Destroyed = event {
+                if let Some(state) = window.try_state::<AppState>() {
+                    let _ = state.writer_tx.send(writer::WriteCommand::Shutdown);
+                    println!("[Abyss] Shutdown signal sent to writer");
+                }
+            }
+        })
         .setup(|app| {
             println!("╔════════════════════════════════════════╗");
             println!("║   ABYSS — Live Network Monitor         ║");
             println!("╚════════════════════════════════════════╝");
 
+            // Resolve database path in app-local data directory
+            let app_data = app
+                .path()
+                .app_local_data_dir()
+                .expect("Failed to resolve app data directory");
+            std::fs::create_dir_all(&app_data).ok();
+            let db_path = app_data.join("sessions.db");
+            println!("[Abyss] Database: {}", db_path.display());
+
+            // Create writer channel
+            let (writer_tx, writer_rx) = writer::create_channel();
+
+            // Register shared state (session starts inside monitor_loop after geo detection)
+            app.manage(AppState {
+                writer_tx: writer_tx.clone(),
+                db_path: db_path.clone(),
+                current_session_id: Mutex::new(None),
+                local_geo: Mutex::new(LocalGeoCache::default()),
+            });
+
+            // Spawn writer thread (dedicated OS thread for blocking SQLite I/O)
+            let writer_db_path = db_path.clone();
+            let baseline_db_path = db_path.clone();
+            std::thread::spawn(move || {
+                writer::writer_thread(writer_rx, writer_db_path);
+            });
+
+            // Spawn monitor loop (auto-starts a session after geo detection)
             let handle = app.handle().clone();
+            let monitor_tx = writer_tx.clone();
             tauri::async_runtime::spawn(async move {
-                monitor_loop(handle).await;
+                monitor_loop(handle, monitor_tx).await;
+            });
+
+            // Spawn auto-baseline recomputation (weekly, first run after 60s)
+            tauri::async_runtime::spawn(async move {
+                // Initial delay to let the app settle
+                tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+                loop {
+                    // Check if baseline needs recomputing (last update > 7 days ago)
+                    let needs_update = {
+                        let path = baseline_db_path.clone();
+                        tokio::task::spawn_blocking(move || {
+                            if let Ok(conn) = db::open_database(&path) {
+                                let last_update: String = conn
+                                    .query_row(
+                                        "SELECT COALESCE(MAX(updated_at), '2000-01-01') FROM baseline_profile",
+                                        [],
+                                        |row| row.get(0),
+                                    )
+                                    .unwrap_or_else(|_| "2000-01-01".to_string());
+                                // Check if older than 7 days
+                                let days_old: f64 = conn
+                                    .query_row(
+                                        "SELECT julianday('now') - julianday(?1)",
+                                        rusqlite::params![last_update],
+                                        |row| row.get(0),
+                                    )
+                                    .unwrap_or(999.0);
+                                days_old > 7.0
+                            } else {
+                                false
+                            }
+                        })
+                        .await
+                        .unwrap_or(false)
+                    };
+
+                    if needs_update {
+                        let path = baseline_db_path.clone();
+                        let _ = tokio::task::spawn_blocking(move || {
+                            if let Ok(conn) = db::open_database(&path) {
+                                match db::compute_baseline(&conn, 90) {
+                                    Ok(n) => println!("[Abyss] Auto-baseline recomputed: {n} buckets"),
+                                    Err(e) => eprintln!("[Abyss] Auto-baseline failed: {e}"),
+                                }
+                            }
+                        })
+                        .await;
+                    }
+
+                    // Sleep for 6 hours before checking again
+                    tokio::time::sleep(std::time::Duration::from_secs(6 * 3600)).await;
+                }
             });
 
             #[cfg(debug_assertions)]

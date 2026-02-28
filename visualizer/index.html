@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -7,19 +7,24 @@
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <title>Abyss — Network Visualizer</title>
     <style>
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      html, body, #root {
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-        background: #010108;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        color: #c0d4e8;
-        -webkit-font-smoothing: antialiased;
+      /* Minimal FOUC prevention — no margin/padding/box-sizing reset here!
+         Tailwind v4's @layer base handles that. Unlayered resets would
+         override ALL Tailwind padding/margin utilities due to cascade layers. */
+      html,
+      body,
+      #root {
+        background: #101016;
+        color: #e8e8ed;
       }
     </style>
   </head>
   <body>
+    <script>
+      try {
+        if (localStorage.getItem("abyss:theme") === "light")
+          document.body.classList.add("light-mode");
+      } catch {}
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

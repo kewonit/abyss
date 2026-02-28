@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useTelemetryStore } from "../telemetry/store";
@@ -10,6 +10,7 @@ import {
   type FlowEndpointsWithId,
 } from "../telemetry/cables";
 import type { GeoFlow } from "../telemetry/schema";
+import { formatDataRate } from "../lib/utils";
 
 const STYLE_DARK =
   "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
@@ -23,9 +24,35 @@ interface CableActivity {
   targetOpacity: number;
 }
 
-const FADE_OUT_DURATION = 3000;
-const FADE_START_DELAY = 2000;
+const FADE_OUT_DURATION = 12000;
+const FADE_START_DELAY = 8000;
 const MIN_OPACITY = 0.05;
+
+/** Theme-aware colors for canvas rendering. */
+function getCanvasTheme(): {
+  isDark: boolean;
+  srcGlow: string;
+  srcDot: string;
+  srcRing: string;
+  cableInactive: string;
+} {
+  const isDark = !document.body.classList.contains("light-mode");
+  return isDark
+    ? {
+        isDark,
+        srcGlow: "rgba(255,255,255,0.05)",
+        srcDot: "#fff",
+        srcRing: "rgba(255,255,255,0.35)",
+        cableInactive: "#1a4a72",
+      }
+    : {
+        isDark,
+        srcGlow: "rgba(0,0,0,0.04)",
+        srcDot: "#1a1a1a",
+        srcRing: "rgba(0,0,0,0.2)",
+        cableInactive: "#90b4d4",
+      };
+}
 
 function visFactor(
   lng: number,
@@ -75,7 +102,7 @@ function lerpColor(c1: string, c2: string, t: number): string {
 function prepCanvas(cvs: HTMLCanvasElement): CanvasRenderingContext2D | null {
   const ctx = cvs.getContext("2d");
   if (!ctx) return null;
-  const dpr = 1; // Cap DPR to 1 — cable/glow shapes are soft, high DPR wastes fill-rate
+  const dpr = 1; // Overlay canvas (dots/cables) doesn't need HiDPI — MapLibre handles sharp basemap
   const w = cvs.clientWidth;
   const h = cvs.clientHeight;
   if (cvs.width !== w * dpr || cvs.height !== h * dpr) {
@@ -102,15 +129,17 @@ function traceCable(
   let anyVisible = false;
 
   for (const line of f.geometry.coordinates) {
-    if (line.length < 2) continue;
+    const pointCount = line.length / 2;
+    if (pointCount < 2) continue;
     let moved = false;
     let prevLng = 0;
     let prevVis = 0;
-    const last = line.length - 1;
+    const last = pointCount - 1;
 
     for (let i = 0; i <= last; i += step) {
       const idx = Math.min(i, last);
-      const [lng, lat] = line[idx];
+      const lng = line[idx * 2];
+      const lat = line[idx * 2 + 1];
       const v = visFactor(lng, lat, cLng, cLat);
 
       if (v <= 0) {
@@ -153,7 +182,8 @@ function traceCable(
     }
 
     if (step > 1) {
-      const [lng, lat] = line[last];
+      const lng = line[last * 2];
+      const lat = line[last * 2 + 1];
       const v = visFactor(lng, lat, cLng, cLat);
       if (v > 0 && moved && Math.abs(lng - prevLng) <= 90) {
         let p: { x: number; y: number } | null | undefined;
@@ -191,10 +221,11 @@ function isFeatureVisible(
   let sumLat = 0;
   let count = 0;
   for (const line of f.geometry.coordinates) {
-    if (line.length > 0) {
-      const mid = line[Math.floor(line.length / 2)];
-      sumLng += mid[0];
-      sumLat += mid[1];
+    const pointCount = line.length / 2;
+    if (pointCount > 0) {
+      const midIdx = Math.floor(pointCount / 2);
+      sumLng += line[midIdx * 2];
+      sumLat += line[midIdx * 2 + 1];
       count++;
     }
   }
@@ -232,8 +263,50 @@ export const NetworkMap = () => {
   const tickFnRef = useRef<((ts: number) => void) | null>(null);
   const cablesLoadingRef = useRef(false);
   const lastMatchRef = useRef(0);
+  const lastHitTestRef = useRef(0);
+
+  // Flow persistence — keep recent flows visible for a few seconds
+  const flowBufferRef = useRef<
+    Map<string, { flow: GeoFlow; expiresAt: number }>
+  >(new Map());
+  const FLOW_PERSIST_MS = 10_000; // keep dots visible 10s after last seen
 
   const flows = useTelemetryStore((s) => s.flows);
+  const [cablesLoaded, setCablesLoaded] = useState(false);
+  const [mapLoaded, setMapLoaded] = useState(false);
+
+  /** Tooltip state for destination dots. */
+  const [tooltip, setTooltip] = useState<{
+    x: number;
+    y: number;
+    ip: string;
+    city?: string;
+    country?: string;
+    bps: number;
+    rtt: number;
+    service?: string;
+    dir: string;
+  } | null>(null);
+  const tooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /** Merge current flows into persistence buffer and return combined list */
+  const getPersistedFlows = useCallback(
+    (currentFlows: GeoFlow[]): GeoFlow[] => {
+      const buf = flowBufferRef.current;
+      const now = Date.now();
+      // Update buffer with current flows
+      for (const f of currentFlows) {
+        buf.set(f.id, { flow: f, expiresAt: now + FLOW_PERSIST_MS });
+      }
+      // Evict expired flows
+      for (const [id, entry] of buf) {
+        if (entry.expiresAt < now) buf.delete(id);
+      }
+      // Return deduplicated combined list
+      return Array.from(buf.values()).map((e) => e.flow);
+    },
+    [],
+  );
 
   const updateActivityTracking = useCallback(
     (fList: GeoFlow[], now: number) => {
@@ -312,6 +385,7 @@ export const NetworkMap = () => {
       const { lng: cLng, lat: cLat } = map.getCenter();
       const cables = cablesRef.current;
       const activity = cableActivityRef.current;
+      const theme = getCanvasTheme(); // Hoist — one DOM read per frame, not per dot
 
       if (cables && cables.features.length > 0) {
         ctx.lineCap = "round";
@@ -322,7 +396,7 @@ export const NetworkMap = () => {
           if (!isFeatureVisible(f, cLng, cLat)) continue;
           traceCable(ctx, map, f, cLng, cLat, 3);
         }
-        ctx.strokeStyle = "#1a4a72";
+        ctx.strokeStyle = theme.cableInactive;
         ctx.lineWidth = 0.7;
         ctx.globalAlpha = 0.35;
         ctx.stroke();
@@ -345,14 +419,14 @@ export const NetworkMap = () => {
           ctx.globalAlpha = sv;
           ctx.beginPath();
           ctx.arc(p.x, p.y, 18, 0, Math.PI * 2);
-          ctx.fillStyle = "rgba(255,255,255,0.05)";
+          ctx.fillStyle = theme.srcGlow;
           ctx.fill();
           ctx.beginPath();
           ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
-          ctx.fillStyle = "#fff";
+          ctx.fillStyle = theme.srcDot;
           ctx.fill();
           ctx.lineWidth = 2;
-          ctx.strokeStyle = "rgba(255,255,255,0.35)";
+          ctx.strokeStyle = theme.srcRing;
           ctx.stroke();
           ctx.globalAlpha = 1;
         }
@@ -479,6 +553,7 @@ export const NetworkMap = () => {
     });
 
     map.on("load", async () => {
+      setMapLoaded(true);
       const cur = useTelemetryStore.getState().flows;
       drawStatic(map, staticCvs.current!, cur);
 
@@ -634,6 +709,7 @@ export const NetworkMap = () => {
           }
           cablesRef.current = cables;
           cablesLoadingRef.current = false;
+          setCablesLoaded(true);
 
           // Run first match + redraw after cables arrive
           const cur = useTelemetryStore.getState().flows;
@@ -663,7 +739,9 @@ export const NetworkMap = () => {
       updateActive(flows, now);
     }
 
-    drawStatic(map, staticCvs.current, flows);
+    // Use persisted flows so dots stay visible longer
+    const persistedFlows = getPersistedFlows(flows);
+    drawStatic(map, staticCvs.current, persistedFlows);
 
     // Wake up rAF loop if it was sleeping and we now have active cables
     if (
@@ -674,7 +752,7 @@ export const NetworkMap = () => {
       idleFramesRef.current = 0;
       rafRef.current = requestAnimationFrame(tickFnRef.current);
     }
-  }, [flows, drawStatic, updateActive]);
+  }, [flows, drawStatic, updateActive, getPersistedFlows]);
 
   const canvasStyle: React.CSSProperties = {
     position: "absolute",
@@ -684,11 +762,139 @@ export const NetworkMap = () => {
     pointerEvents: "none",
   };
 
+  /** Hit-test destination dots on mouse move for tooltip (throttled to ~10 Hz). */
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const now = performance.now();
+    if (now - lastHitTestRef.current < 100) return;
+    lastHitTestRef.current = now;
+
+    const map = mapRef.current;
+    if (!map) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const curFlows = useTelemetryStore.getState().flows;
+    const HIT_RADIUS = 14; // px
+
+    let closest: typeof tooltip = null;
+    let closestDist = HIT_RADIUS;
+
+    for (const f of curFlows) {
+      if (!f.dst || isNaN(f.dst.lat)) continue;
+      const p = map.project([f.dst.lng, f.dst.lat]);
+      if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) continue;
+      const dx = p.x - mx;
+      const dy = p.y - my;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < closestDist) {
+        closestDist = dist;
+        closest = {
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top,
+          ip: f.dst.ip,
+          city: f.dst.city,
+          country: f.dst.country,
+          bps: f.bps,
+          rtt: f.rtt,
+          service: f.service,
+          dir: f.dir,
+        };
+      }
+    }
+
+    if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+
+    if (closest) {
+      setTooltip(closest);
+    } else {
+      // Debounce hiding to prevent flicker
+      tooltipTimerRef.current = setTimeout(() => setTooltip(null), 100);
+    }
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+    setTooltip(null);
+  }, []);
+
   return (
-    <div className="network-map" style={{ position: "relative" }}>
+    <div
+      className="relative w-full h-full"
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+    >
       <div ref={mapDiv} style={{ position: "absolute", inset: 0 }} />
       <canvas ref={staticCvs} style={{ ...canvasStyle, zIndex: 1 }} />
       <canvas ref={animCvs} style={{ ...canvasStyle, zIndex: 2 }} />
+
+      {/* Map loading shimmer */}
+      {!mapLoaded && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-[rgba(var(--ui-bg),0.5)]">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-24 h-1 rounded-full bg-[rgba(var(--ui-fg),0.06)] overflow-hidden">
+              <div className="h-full w-1/3 rounded-full bg-[rgba(var(--ui-fg),0.12)] animate-[shimmer_1.5s_ease-in-out_infinite]" />
+            </div>
+            <span className="text-[10px] text-[rgba(var(--ui-fg),0.25)]">
+              Loading map…
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {flows.length === 0 && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+          <div className="bg-(--pill-bg) backdrop-blur-xl border border-(--pill-border) rounded-lg px-4 py-3 text-center">
+            <div className="text-[12px] text-[rgba(var(--ui-fg),0.35)] font-medium">
+              Waiting for network activity…
+            </div>
+            <div className="text-[10px] text-[rgba(var(--ui-fg),0.2)] mt-1">
+              Flows will appear on the map automatically
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Destination dot tooltip */}
+      {tooltip && (
+        <div
+          className="absolute z-50 pointer-events-none bg-(--pill-bg) backdrop-blur-xl border border-(--pill-border) rounded-lg shadow-lg"
+          style={{
+            left: tooltip.x + 12,
+            top: tooltip.y - 8,
+            padding: "8px 12px",
+            maxWidth: 220,
+          }}
+        >
+          <div className="text-[11px] font-semibold text-[rgba(var(--ui-fg),0.85)] truncate">
+            {tooltip.city || tooltip.ip}
+          </div>
+          {tooltip.city && (
+            <div className="text-[10px] text-[rgba(var(--ui-fg),0.4)] font-mono truncate">
+              {tooltip.ip}
+            </div>
+          )}
+          <div className="flex items-center gap-3 mt-1.5 text-[10px] font-mono tabular-nums">
+            <span className="text-(--accent-cyan)">
+              {formatDataRate(tooltip.bps)}
+            </span>
+            <span className="text-[rgba(var(--ui-fg),0.4)]">
+              {tooltip.rtt.toFixed(0)}ms
+            </span>
+            {tooltip.service && (
+              <span className="text-[rgba(var(--ui-fg),0.3)]">
+                {tooltip.service}
+              </span>
+            )}
+          </div>
+          {tooltip.country && (
+            <div className="text-[10px] text-[rgba(var(--ui-fg),0.3)] mt-0.5">
+              {tooltip.country} · {tooltip.dir}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

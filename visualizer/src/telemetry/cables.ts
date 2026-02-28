@@ -8,12 +8,23 @@ export interface CableProperties {
 export interface CableFeature {
   type: "Feature";
   properties: CableProperties;
-  geometry: { type: "MultiLineString"; coordinates: number[][][] };
+  /** Flat interleaved [lng,lat,lng,lat,...] per line — fewer GC objects than number[][][] */
+  geometry: { type: "MultiLineString"; coordinates: Float32Array[] };
 }
 
 export interface CableCollection {
   type: "FeatureCollection";
   features: CableFeature[];
+}
+
+/** Raw GeoJSON shape before compacting coordinates to Float32Array. */
+interface RawCableCollection {
+  type: "FeatureCollection";
+  features: {
+    type: "Feature";
+    properties: CableProperties;
+    geometry: { type: "MultiLineString"; coordinates: number[][][] };
+  }[];
 }
 
 let _cache: CableCollection | null = null;
@@ -22,7 +33,7 @@ export async function loadCables(): Promise<CableCollection> {
   if (_cache) return _cache;
 
   try {
-    let raw: CableCollection;
+    let raw: RawCableCollection;
 
     try {
       const { invoke } = await import("@tauri-apps/api/core");
@@ -48,12 +59,14 @@ export async function loadCables(): Promise<CableCollection> {
         },
         geometry: {
           type: "MultiLineString" as const,
-          coordinates: f.geometry.coordinates.map((line) =>
-            line.map(([lng, lat]) => [
-              Math.round(lng * 100) / 100,
-              Math.round(lat * 100) / 100,
-            ]),
-          ),
+          coordinates: f.geometry.coordinates.map((line) => {
+            const arr = new Float32Array(line.length * 2);
+            for (let i = 0; i < line.length; i++) {
+              arr[i * 2] = Math.round(line[i][0] * 100) / 100;
+              arr[i * 2 + 1] = Math.round(line[i][1] * 100) / 100;
+            }
+            return arr;
+          }),
         },
       })),
     };
@@ -155,13 +168,20 @@ function scoreFeatureForRoute(
 
   let minSrcDist = Infinity,
     minDstDist = Infinity;
-  let srcPoint: number[] | null = null;
-  let dstPoint: number[] | null = null;
+  let srcLng = 0,
+    srcLat = 0,
+    dstLng = 0,
+    dstLat = 0;
+  let hasSrc = false,
+    hasDst = false;
   let pointsInCorridor = 0,
     totalPoints = 0;
 
   for (const line of f.geometry.coordinates) {
-    for (const [lng, lat] of line) {
+    const len = line.length / 2;
+    for (let i = 0; i < len; i++) {
+      const lng = line[i * 2];
+      const lat = line[i * 2 + 1];
       totalPoints++;
 
       const dS = hav(flow.srcLat, flow.srcLng, lat, lng);
@@ -169,11 +189,15 @@ function scoreFeatureForRoute(
 
       if (dS < minSrcDist) {
         minSrcDist = dS;
-        srcPoint = [lng, lat];
+        srcLng = lng;
+        srcLat = lat;
+        hasSrc = true;
       }
       if (dD < minDstDist) {
         minDstDist = dD;
-        dstPoint = [lng, lat];
+        dstLng = lng;
+        dstLat = lat;
+        hasDst = true;
       }
 
       const crossDist = crossTrackDistance(
@@ -199,11 +223,11 @@ function scoreFeatureForRoute(
     }
   }
 
-  if (totalPoints === 0 || !srcPoint || !dstPoint) return null;
+  if (totalPoints === 0 || !hasSrc || !hasDst) return null;
 
   const corridorRatio = pointsInCorridor / totalPoints;
-  const srcPointToDst = hav(flow.dstLat, flow.dstLng, srcPoint[1], srcPoint[0]);
-  const dstPointToDst = hav(flow.dstLat, flow.dstLng, dstPoint[1], dstPoint[0]);
+  const srcPointToDst = hav(flow.dstLat, flow.dstLng, srcLat, srcLng);
+  const dstPointToDst = hav(flow.dstLat, flow.dstLng, dstLat, dstLng);
   const progressRatio = (srcPointToDst - dstPointToDst) / directDist;
 
   const nearSource = minSrcDist < corridorWidth * 1.5;
