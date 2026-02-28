@@ -4,7 +4,6 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { useTelemetryStore } from "../telemetry/store";
 import {
   loadCables,
-  buildCableIndex,
   matchFlowsPerFlow,
   type CableCollection,
   type CableFeature,
@@ -76,7 +75,7 @@ function lerpColor(c1: string, c2: string, t: number): string {
 function prepCanvas(cvs: HTMLCanvasElement): CanvasRenderingContext2D | null {
   const ctx = cvs.getContext("2d");
   if (!ctx) return null;
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = 1; // Cap DPR to 1 — cable/glow shapes are soft, high DPR wastes fill-rate
   const w = cvs.clientWidth;
   const h = cvs.clientHeight;
   if (cvs.width !== w * dpr || cvs.height !== h * dpr) {
@@ -88,6 +87,9 @@ function prepCanvas(cvs: HTMLCanvasElement): CanvasRenderingContext2D | null {
   return ctx;
 }
 
+/** Per-frame projection cache — avoids redundant map.project() calls (cleared each frame). */
+type ProjectionCache = Map<string, { x: number; y: number } | null>;
+
 function traceCable(
   ctx: CanvasRenderingContext2D,
   map: maplibregl.Map,
@@ -95,6 +97,7 @@ function traceCable(
   cLng: number,
   cLat: number,
   step: number,
+  cache?: ProjectionCache,
 ): boolean {
   let anyVisible = false;
 
@@ -118,8 +121,21 @@ function traceCable(
       if (moved && Math.abs(lng - prevLng) > 90) moved = false;
       if (moved && prevVis <= 0) moved = false;
 
-      const p = map.project([lng, lat]);
-      if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) {
+      let p: { x: number; y: number } | null | undefined;
+      if (cache) {
+        const key = `${lng},${lat}`;
+        p = cache.get(key);
+        if (p === undefined) {
+          const proj = map.project([lng, lat]);
+          p = Number.isFinite(proj.x) && Number.isFinite(proj.y) ? proj : null;
+          cache.set(key, p);
+        }
+      } else {
+        const proj = map.project([lng, lat]);
+        p = Number.isFinite(proj.x) && Number.isFinite(proj.y) ? proj : null;
+      }
+
+      if (!p) {
         moved = false;
         continue;
       }
@@ -140,8 +156,21 @@ function traceCable(
       const [lng, lat] = line[last];
       const v = visFactor(lng, lat, cLng, cLat);
       if (v > 0 && moved && Math.abs(lng - prevLng) <= 90) {
-        const p = map.project([lng, lat]);
-        if (Number.isFinite(p.x) && Number.isFinite(p.y)) {
+        let p: { x: number; y: number } | null | undefined;
+        if (cache) {
+          const key = `${lng},${lat}`;
+          p = cache.get(key);
+          if (p === undefined) {
+            const proj = map.project([lng, lat]);
+            p =
+              Number.isFinite(proj.x) && Number.isFinite(proj.y) ? proj : null;
+            cache.set(key, p);
+          }
+        } else {
+          const proj = map.project([lng, lat]);
+          p = Number.isFinite(proj.x) && Number.isFinite(proj.y) ? proj : null;
+        }
+        if (p) {
           ctx.lineTo(p.x, p.y);
           anyVisible = true;
         }
@@ -152,11 +181,41 @@ function traceCable(
   return anyVisible;
 }
 
+/** Quick hemisphere check — skip cables entirely on the back of the globe. */
+function isFeatureVisible(
+  f: CableFeature,
+  cLng: number,
+  cLat: number,
+): boolean {
+  let sumLng = 0;
+  let sumLat = 0;
+  let count = 0;
+  for (const line of f.geometry.coordinates) {
+    if (line.length > 0) {
+      const mid = line[Math.floor(line.length / 2)];
+      sumLng += mid[0];
+      sumLat += mid[1];
+      count++;
+    }
+  }
+  if (count === 0) return false;
+  return visFactor(sumLng / count, sumLat / count, cLng, cLat) > 0;
+}
+
 const DIR_COLOR: Record<string, string> = {
   up: "#ff7a45",
   down: "#00d4f5",
   bidi: "#b06cff",
 };
+
+/** Returns true when a flow's endpoints are far enough apart to warrant cable matching. */
+function needsCables(f: GeoFlow): boolean {
+  if (!f.src || !f.dst || isNaN(f.src.lat) || isNaN(f.dst.lat)) return false;
+  const dlat = f.src.lat - f.dst.lat;
+  const dlng = f.src.lng - f.dst.lng;
+  // dlat² + dlng² > 4 ≈ ~200 km at equator
+  return dlat * dlat + dlng * dlng > 4;
+}
 
 export const NetworkMap = () => {
   const mapDiv = useRef<HTMLDivElement>(null);
@@ -164,12 +223,15 @@ export const NetworkMap = () => {
   const animCvs = useRef<HTMLCanvasElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const cablesRef = useRef<CableCollection | null>(null);
-  const cableIndexRef = useRef<Map<string, number[][]> | null>(null);
   const perFlowCablesRef = useRef<Map<string, Set<string>>>(new Map());
   const cableActivityRef = useRef<Map<string, CableActivity>>(new Map());
   const cableThroughputRef = useRef<Map<string, number>>(new Map());
   const rafRef = useRef(0);
   const lastFrameTimeRef = useRef(0);
+  const idleFramesRef = useRef(0);
+  const tickFnRef = useRef<((ts: number) => void) | null>(null);
+  const cablesLoadingRef = useRef(false);
+  const lastMatchRef = useRef(0);
 
   const flows = useTelemetryStore((s) => s.flows);
 
@@ -257,11 +319,12 @@ export const NetworkMap = () => {
         ctx.beginPath();
         for (const f of cables.features) {
           if (activity.has(f.properties.feature_id)) continue;
+          if (!isFeatureVisible(f, cLng, cLat)) continue;
           traceCable(ctx, map, f, cLng, cLat, 3);
         }
-        ctx.strokeStyle = "#0d2640";
-        ctx.lineWidth = 0.4;
-        ctx.globalAlpha = 0.25;
+        ctx.strokeStyle = "#1a4a72";
+        ctx.lineWidth = 0.7;
+        ctx.globalAlpha = 0.35;
         ctx.stroke();
       }
 
@@ -339,10 +402,14 @@ export const NetworkMap = () => {
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
 
+      // Per-frame projection cache — traceCable is called 3× per active cable
+      const projCache: ProjectionCache = new Map();
+
       for (const f of cables.features) {
         const featureId = f.properties.feature_id;
         const state = activity.get(featureId);
         if (!state || state.opacity < MIN_OPACITY) continue;
+        if (!isFeatureVisible(f, cLng, cLat)) continue;
 
         const bps = throughput.get(featureId) ?? state.throughput;
         const color = getActivityColor(bps);
@@ -350,7 +417,7 @@ export const NetworkMap = () => {
         const baseOpacity = state.opacity;
 
         ctx.beginPath();
-        const hasVisible = traceCable(ctx, map, f, cLng, cLat, 1);
+        const hasVisible = traceCable(ctx, map, f, cLng, cLat, 1, projCache);
         if (!hasVisible) continue;
 
         ctx.strokeStyle = `rgba(${r},${g},${b},${0.08 * baseOpacity})`;
@@ -359,7 +426,7 @@ export const NetworkMap = () => {
         ctx.stroke();
 
         ctx.beginPath();
-        traceCable(ctx, map, f, cLng, cLat, 1);
+        traceCable(ctx, map, f, cLng, cLat, 1, projCache);
         ctx.strokeStyle = `rgba(${r},${g},${b},${0.6 * baseOpacity})`;
         ctx.lineWidth = 1.3;
         ctx.setLineDash([]);
@@ -371,7 +438,7 @@ export const NetworkMap = () => {
         const offset = (ts * 0.04 * speedFactor) % (dashLen + gapLen);
 
         ctx.beginPath();
-        traceCable(ctx, map, f, cLng, cLat, 1);
+        traceCable(ctx, map, f, cLng, cLat, 1, projCache);
         ctx.setLineDash([dashLen, gapLen]);
         ctx.lineDashOffset = -offset;
         ctx.strokeStyle = `rgba(${Math.min(255, r + 40)},${Math.min(255, g + 40)},${Math.min(255, b + 40)},${0.4 * baseOpacity})`;
@@ -398,7 +465,8 @@ export const NetworkMap = () => {
       attributionControl: false,
       renderWorldCopies: false,
       fadeDuration: 0,
-      canvasContextAttributes: { antialias: true },
+      maxTileCacheSize: 16,
+      canvasContextAttributes: { antialias: false },
     });
 
     map.addControl(
@@ -411,14 +479,7 @@ export const NetworkMap = () => {
     });
 
     map.on("load", async () => {
-      const cables = await loadCables();
-      cablesRef.current = cables;
-      if (cables.features.length > 0) {
-        cableIndexRef.current = buildCableIndex(cables);
-      }
-
       const cur = useTelemetryStore.getState().flows;
-      updateActive(cur, performance.now());
       drawStatic(map, staticCvs.current!, cur);
 
       try {
@@ -434,22 +495,67 @@ export const NetworkMap = () => {
       } catch {}
 
       let lastTs = performance.now();
+      const MAX_IDLE_FRAMES = 90; // ~3s at 30fps before sleeping
+
       const tick = (ts: number) => {
         const deltaMs = ts - lastTs;
+
+        // 30fps cap — skip frame if <33ms since last draw
+        if (deltaMs < 33) {
+          rafRef.current = requestAnimationFrame(tick);
+          return;
+        }
+
+        // Clamp delta to avoid massive jumps after tab switch / wake
+        const cappedDelta = Math.min(deltaMs, 200);
         lastTs = ts;
         lastFrameTimeRef.current = ts;
-        if (animCvs.current) drawActive(map, animCvs.current, ts, deltaMs);
+
+        const activity = cableActivityRef.current;
+        if (activity.size === 0) {
+          idleFramesRef.current++;
+          if (idleFramesRef.current > MAX_IDLE_FRAMES) {
+            // Clear animation canvas and sleep — flows useEffect will wake us
+            if (animCvs.current) {
+              const sleepCtx = animCvs.current.getContext("2d");
+              if (sleepCtx)
+                sleepCtx.clearRect(
+                  0,
+                  0,
+                  animCvs.current.width,
+                  animCvs.current.height,
+                );
+            }
+            rafRef.current = 0;
+            return;
+          }
+        } else {
+          idleFramesRef.current = 0;
+        }
+
+        if (animCvs.current) drawActive(map, animCvs.current, ts, cappedDelta);
         rafRef.current = requestAnimationFrame(tick);
       };
+
+      tickFnRef.current = tick;
       rafRef.current = requestAnimationFrame(tick);
     });
 
-    const redrawStatic = () => {
+    const redrawOnMove = () => {
       if (!staticCvs.current) return;
       drawStatic(map, staticCvs.current, useTelemetryStore.getState().flows);
+
+      // Sync active cable canvas with static canvas on every map transform
+      // to prevent active cables lagging behind during pan/rotate/zoom.
+      if (animCvs.current && cableActivityRef.current.size > 0) {
+        const now = performance.now();
+        const dt = Math.min(now - lastFrameTimeRef.current, 200);
+        lastFrameTimeRef.current = now;
+        drawActive(map, animCvs.current, now, dt);
+      }
     };
-    map.on("move", redrawStatic);
-    map.on("resize", redrawStatic);
+    map.on("move", redrawOnMove);
+    map.on("resize", redrawOnMove);
 
     const handleNorthUp = () => {
       map.easeTo({ bearing: 0, pitch: 0, duration: 500 });
@@ -466,12 +572,27 @@ export const NetworkMap = () => {
     };
     window.addEventListener("abyss:theme-change", handleThemeChange);
 
+    // Pause animation loop when tab is hidden, resume when visible
+    const handleVisibility = () => {
+      if (document.hidden) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = 0;
+      } else if (tickFnRef.current && rafRef.current === 0) {
+        idleFramesRef.current = 0;
+        rafRef.current = requestAnimationFrame(tickFnRef.current);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
     mapRef.current = map;
 
     return () => {
       cancelAnimationFrame(rafRef.current);
+      rafRef.current = 0;
+      tickFnRef.current = null;
       window.removeEventListener("abyss:north-up", handleNorthUp);
       window.removeEventListener("abyss:theme-change", handleThemeChange);
+      document.removeEventListener("visibilitychange", handleVisibility);
       map.remove();
       mapRef.current = null;
     };
@@ -479,7 +600,7 @@ export const NetworkMap = () => {
 
   const updateActive = useCallback(
     (fList: GeoFlow[], now: number = performance.now()) => {
-      if (!cableIndexRef.current || !cablesRef.current) return;
+      if (!cablesRef.current) return;
 
       const eps: FlowEndpointsWithId[] = fList
         .filter((f) => f.src && f.dst && !isNaN(f.src.lat) && !isNaN(f.dst.lat))
@@ -491,11 +612,7 @@ export const NetworkMap = () => {
           dstLat: f.dst.lat,
         }));
 
-      const perFlow = matchFlowsPerFlow(
-        cableIndexRef.current,
-        eps,
-        cablesRef.current,
-      );
+      const perFlow = matchFlowsPerFlow(eps, cablesRef.current);
       perFlowCablesRef.current = perFlow;
       updateActivityTracking(fList, now);
     },
@@ -505,8 +622,58 @@ export const NetworkMap = () => {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !staticCvs.current) return;
-    updateActive(flows, performance.now());
+
+    if (!cablesRef.current && !cablesLoadingRef.current) {
+      if (flows.some(needsCables)) {
+        cablesLoadingRef.current = true;
+        loadCables().then((cables) => {
+          // Guard against unmount during async load
+          if (!mapRef.current) {
+            cablesLoadingRef.current = false;
+            return;
+          }
+          cablesRef.current = cables;
+          cablesLoadingRef.current = false;
+
+          // Run first match + redraw after cables arrive
+          const cur = useTelemetryStore.getState().flows;
+          const now = performance.now();
+          lastMatchRef.current = now;
+          updateActive(cur, now);
+          if (staticCvs.current) {
+            drawStatic(mapRef.current, staticCvs.current, cur);
+          }
+
+          // Wake rAF if new cable activity detected
+          if (
+            rafRef.current === 0 &&
+            cableActivityRef.current.size > 0 &&
+            tickFnRef.current
+          ) {
+            idleFramesRef.current = 0;
+            rafRef.current = requestAnimationFrame(tickFnRef.current);
+          }
+        });
+      }
+    }
+
+    const now = performance.now();
+    if (now - lastMatchRef.current >= 500) {
+      lastMatchRef.current = now;
+      updateActive(flows, now);
+    }
+
     drawStatic(map, staticCvs.current, flows);
+
+    // Wake up rAF loop if it was sleeping and we now have active cables
+    if (
+      rafRef.current === 0 &&
+      cableActivityRef.current.size > 0 &&
+      tickFnRef.current
+    ) {
+      idleFramesRef.current = 0;
+      rafRef.current = requestAnimationFrame(tickFnRef.current);
+    }
   }, [flows, drawStatic, updateActive]);
 
   const canvasStyle: React.CSSProperties = {

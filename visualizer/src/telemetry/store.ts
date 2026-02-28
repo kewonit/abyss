@@ -6,6 +6,37 @@ import {
   GeoFlow,
 } from "./schema";
 
+/**
+ * Fixed-capacity ring buffer backed by Float64Array.
+ * Avoids spread+shift allocation churn on every telemetry frame.
+ */
+class RingBuffer {
+  private buf: Float64Array;
+  private head = 0;
+  private count = 0;
+
+  constructor(private capacity: number) {
+    this.buf = new Float64Array(capacity);
+  }
+
+  push(value: number): void {
+    this.buf[this.head] = value;
+    this.head = (this.head + 1) % this.capacity;
+    if (this.count < this.capacity) this.count++;
+  }
+
+  /** Returns a new array in chronological order (for Sparkline rendering). */
+  toArray(): number[] {
+    if (this.count === 0) return [];
+    const result = new Array<number>(this.count);
+    const start = (this.head - this.count + this.capacity) % this.capacity;
+    for (let i = 0; i < this.count; i++) {
+      result[i] = this.buf[(start + i) % this.capacity];
+    }
+    return result;
+  }
+}
+
 interface TelemetryState {
   frame: TelemetryFrame | null;
   derived: DerivedMetrics;
@@ -28,7 +59,11 @@ const EMPTY_DERIVED: DerivedMetrics = {
 
 const HISTORY_LENGTH = 60;
 
-export const useTelemetryStore = create<TelemetryState>((set, get) => ({
+// Pre-allocated ring buffers — persist across store updates
+const throughputRing = new RingBuffer(HISTORY_LENGTH);
+const latencyRing = new RingBuffer(HISTORY_LENGTH);
+
+export const useTelemetryStore = create<TelemetryState>((set) => ({
   frame: null,
   derived: EMPTY_DERIVED,
   connected: false,
@@ -45,18 +80,15 @@ export const useTelemetryStore = create<TelemetryState>((set, get) => ({
       ? Math.max(0, frame.net.latencyMs)
       : 0;
 
-    const tHistory = [...get().throughputHistory, throughput];
-    if (tHistory.length > HISTORY_LENGTH) tHistory.shift();
-
-    const lHistory = [...get().latencyHistory, latency];
-    if (lHistory.length > HISTORY_LENGTH) lHistory.shift();
+    throughputRing.push(throughput);
+    latencyRing.push(latency);
 
     set({
       frame,
       derived,
       flows: Array.isArray(frame.flows) ? frame.flows : [],
-      throughputHistory: tHistory,
-      latencyHistory: lHistory,
+      throughputHistory: throughputRing.toArray(),
+      latencyHistory: latencyRing.toArray(),
     });
   },
 

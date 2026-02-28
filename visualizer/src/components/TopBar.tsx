@@ -18,7 +18,13 @@ function formatBps(bps: number): string {
 }
 
 export const TopBar: React.FC = () => {
-  const frame = useTelemetryStore((s) => s.frame);
+  // Primitive selectors — only re-render when the actual number changes,
+  // not on every frame when the parent object reference changes.
+  const hasFrame = useTelemetryStore((s) => s.frame !== null);
+  const bps = useTelemetryStore((s) => s.frame?.net.bps ?? 0);
+  const uploadBps = useTelemetryStore((s) => s.frame?.net.uploadBps ?? 0);
+  const downloadBps = useTelemetryStore((s) => s.frame?.net.downloadBps ?? 0);
+  const latencyMs = useTelemetryStore((s) => s.frame?.net.latencyMs ?? 0);
   const [clock, setClock] = useState("");
   const [darkMode, setDarkMode] = useState(true);
 
@@ -93,33 +99,31 @@ export const TopBar: React.FC = () => {
           </div>
         </div>
 
-        {frame && (
+        {hasFrame && (
           <div className="pill metrics-pill">
             <span className="pill-metric">
               <span className="pill-metric-label">Throughput</span>
-              <span className="pill-metric-value">
-                {formatBps(frame.net.bps * 8)}
-              </span>
+              <span className="pill-metric-value">{formatBps(bps * 8)}</span>
             </span>
             <span className="pill-divider" />
             <span className="pill-metric">
               <span className="pill-metric-label up-label">Upload</span>
               <span className="pill-metric-value accent-up">
-                {formatBps(frame.net.uploadBps * 8)}
+                {formatBps(uploadBps * 8)}
               </span>
             </span>
             <span className="pill-divider" />
             <span className="pill-metric">
               <span className="pill-metric-label down-label">Download</span>
               <span className="pill-metric-value accent-down">
-                {formatBps(frame.net.downloadBps * 8)}
+                {formatBps(downloadBps * 8)}
               </span>
             </span>
             <span className="pill-divider" />
             <span className="pill-metric">
               <span className="pill-metric-label">Latency</span>
               <span className="pill-metric-value accent-latency">
-                {frame.net.latencyMs.toFixed(0)} ms
+                {latencyMs.toFixed(0)} ms
               </span>
             </span>
           </div>

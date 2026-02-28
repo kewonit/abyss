@@ -2,30 +2,27 @@
   "name": "abyss",
   "version": "0.1.0",
   "private": true,
-  "description": "Living abyssal network visualizer — packet sniffer daemon + WebGL deep-ocean ecosystem",
+  "description": "Real-time network intelligence dashboard — Tauri app with MapLibre globe visualization",
   "scripts": {
     "dev": "cd tauri-host/src-tauri && cargo tauri dev",
     "build": "cd tauri-host/src-tauri && cargo tauri build",
+    "build:release": "powershell -ExecutionPolicy Bypass -File scripts/build-release.ps1",
     "dev:vite": "cd visualizer && npm run dev",
-    "dev:monitor": "node monitor.mjs",
     "install:all": "cd visualizer && npm install"
   },
   "keywords": [
     "network",
     "visualizer",
-    "packet-sniffer",
-    "webgl",
     "tauri",
-    "three.js"
+    "maplibre",
+    "desktop-app"
   ],
   "license": "MIT",
-  "main": "index.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kewonit/abyss.git"
   },
   "author": "",
-  "type": "commonjs",
   "bugs": {
     "url": "https://github.com/kewonit/abyss/issues"
   },

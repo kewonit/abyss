@@ -1,6 +1,4 @@
-export const SCHEMA_VERSION = 2;
-
-export interface GeoEndpoint {
+interface GeoEndpoint {
   ip: string;
   lat: number;
   lng: number;
@@ -22,7 +20,7 @@ export interface GeoFlow {
   startedAt: number;
 }
 
-export interface ProtoCounters {
+interface ProtoCounters {
   tcp: number;
   udp: number;
   icmp: number;
@@ -32,7 +30,7 @@ export interface ProtoCounters {
   other: number;
 }
 
-export interface NetMetrics {
+interface NetMetrics {
   bps: number;
   pps: number;
   activeFlows: number;
@@ -58,6 +56,19 @@ export interface DerivedMetrics {
   topProtocols: Array<{ protocol: string; count: number }>;
 }
 
+// Pre-allocated reusable buffers for computeDerivedMetrics — avoids creating
+// ~7 intermediate arrays per frame (420 short-lived arrays/sec at 60fps).
+const _countryEntries: Array<{ country: string; bps: number }> = [];
+const _countryMap = new Map<string, number>();
+const _protoPool: Array<{ protocol: string; count: number }> = [
+  { protocol: "TCP", count: 0 },
+  { protocol: "UDP", count: 0 },
+  { protocol: "HTTPS", count: 0 },
+  { protocol: "HTTP", count: 0 },
+  { protocol: "DNS", count: 0 },
+  { protocol: "ICMP", count: 0 },
+];
+
 export function computeDerivedMetrics(frame: TelemetryFrame): DerivedMetrics {
   const throughputMbps = (frame.net.bps * 8) / 1_000_000;
   const uploadMbps = (frame.net.uploadBps * 8) / 1_000_000;
@@ -67,26 +78,31 @@ export function computeDerivedMetrics(frame: TelemetryFrame): DerivedMetrics {
   const normLatency = Math.min(frame.net.latencyMs / 200, 1);
   const networkPressure = Math.min(1, normThroughput * 0.6 + normLatency * 0.4);
 
-  const countryMap = new Map<string, number>();
+  _countryMap.clear();
   for (const flow of frame.flows) {
     const country = flow.dst.country || "Unknown";
-    countryMap.set(country, (countryMap.get(country) || 0) + flow.bps);
+    _countryMap.set(country, (_countryMap.get(country) || 0) + flow.bps);
   }
-  const topCountries = Array.from(countryMap.entries())
-    .map(([country, bps]) => ({ country, bps }))
-    .sort((a, b) => b.bps - a.bps)
-    .slice(0, 5);
+  _countryEntries.length = 0;
+  for (const [country, bps] of _countryMap) {
+    _countryEntries.push({ country, bps });
+  }
+  _countryEntries.sort((a, b) => b.bps - a.bps);
+  // .slice() creates a new array for Zustand immutability
+  const topCountries = _countryEntries.slice(0, 5);
 
-  const topProtocols: Array<{ protocol: string; count: number }> = [
-    { protocol: "TCP", count: frame.proto.tcp },
-    { protocol: "UDP", count: frame.proto.udp },
-    { protocol: "HTTPS", count: frame.proto.https },
-    { protocol: "HTTP", count: frame.proto.http },
-    { protocol: "DNS", count: frame.proto.dns },
-    { protocol: "ICMP", count: frame.proto.icmp },
-  ]
-    .filter((p) => p.count > 0)
-    .sort((a, b) => b.count - a.count);
+  _protoPool[0].count = frame.proto.tcp;
+  _protoPool[1].count = frame.proto.udp;
+  _protoPool[2].count = frame.proto.https;
+  _protoPool[3].count = frame.proto.http;
+  _protoPool[4].count = frame.proto.dns;
+  _protoPool[5].count = frame.proto.icmp;
+  const topProtocols: Array<{ protocol: string; count: number }> = [];
+  for (const p of _protoPool) {
+    if (p.count > 0)
+      topProtocols.push({ protocol: p.protocol, count: p.count });
+  }
+  topProtocols.sort((a, b) => b.count - a.count);
 
   return {
     throughputMbps,
@@ -96,40 +112,4 @@ export function computeDerivedMetrics(frame: TelemetryFrame): DerivedMetrics {
     topCountries,
     topProtocols,
   };
-}
-
-function isFiniteNumber(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-export function validateFrame(data: unknown): TelemetryFrame | null {
-  if (!isRecord(data)) return null;
-
-  const schema = data.schema;
-  const t = data.t;
-  const net = data.net;
-  const proto = data.proto;
-  const flows = data.flows;
-
-  if (!isFiniteNumber(schema) || schema < 1) return null;
-  if (!isFiniteNumber(t) || t < 0) return null;
-  if (!isRecord(net) || !isRecord(proto) || !Array.isArray(flows)) return null;
-
-  const requiredNetKeys = [
-    "bps",
-    "pps",
-    "activeFlows",
-    "latencyMs",
-    "uploadBps",
-    "downloadBps",
-  ] as const;
-  for (const key of requiredNetKeys) {
-    if (!isFiniteNumber(net[key]) || (net[key] as number) < 0) return null;
-  }
-
-  return data as unknown as TelemetryFrame;
 }

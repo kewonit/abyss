@@ -5,6 +5,7 @@
 #include <vector>
 #include <mutex>
 #include <algorithm>
+#include <cstdio>
 
 namespace abyss {
 
@@ -127,17 +128,16 @@ public:
       const auto* flow = candidates[i].second;
       TopFlowSummary summary;
 
+      // Use snprintf instead of string concatenation — avoids ~15 temporary std::string allocations
+      char keybuf[64];
       uint32_t s = flow->key.src_ip;
       uint32_t d = flow->key.dst_ip;
-      summary.key = std::to_string((s >> 24) & 0xFF) + "." +
-                    std::to_string((s >> 16) & 0xFF) + "." +
-                    std::to_string((s >> 8) & 0xFF) + "." +
-                    std::to_string(s & 0xFF) + ":" +
-                    std::to_string((d >> 24) & 0xFF) + "." +
-                    std::to_string((d >> 16) & 0xFF) + "." +
-                    std::to_string((d >> 8) & 0xFF) + "." +
-                    std::to_string(d & 0xFF) + ":" +
-                    std::to_string(flow->key.dst_port);
+      int len = snprintf(keybuf, sizeof(keybuf),
+        "%u.%u.%u.%u:%u.%u.%u.%u:%u",
+        (s >> 24) & 0xFF, (s >> 16) & 0xFF, (s >> 8) & 0xFF, s & 0xFF,
+        (d >> 24) & 0xFF, (d >> 16) & 0xFF, (d >> 8) & 0xFF, d & 0xFF,
+        static_cast<unsigned>(flow->key.dst_port));
+      summary.key.assign(keybuf, len > 0 ? static_cast<size_t>(len) : 0);
 
       summary.bps = static_cast<uint64_t>(
         static_cast<double>(flow->bytes_window) * 8.0 / window_seconds

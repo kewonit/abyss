@@ -62,11 +62,19 @@ public:
   void broadcast(const TelemetryFrame& frame) {
     if (!running_.load(std::memory_order_acquire)) return;
 
+    // Serialize outside the lock — JSON serialization is the expensive part
     nlohmann::json j = telemetry_to_json(frame);
     std::string payload = j.dump();
 
-    std::lock_guard<std::mutex> lock(clients_mutex_);
-    for (auto* client : clients_) {
+    // Copy client list under lock, then send without holding it.
+    // This prevents slow sends from blocking client connect/disconnect.
+    std::vector<ix::WebSocket*> snapshot;
+    {
+      std::lock_guard<std::mutex> lock(clients_mutex_);
+      snapshot = clients_;
+    }
+
+    for (auto* client : snapshot) {
       if (client) {
         client->send(payload, false);
       }

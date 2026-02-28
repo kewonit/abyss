@@ -21,7 +21,7 @@ public:
     size_t tail = tail_.load(std::memory_order_acquire);
     if (next_head == tail) {
       tail_.store((tail + 1) & MASK, std::memory_order_release);
-      drops_++;
+      drops_.fetch_add(1, std::memory_order_relaxed);
     }
 
     buffer_[head] = item;
@@ -35,7 +35,7 @@ public:
     size_t tail = tail_.load(std::memory_order_acquire);
     if (next_head == tail) {
       tail_.store((tail + 1) & MASK, std::memory_order_release);
-      drops_++;
+      drops_.fetch_add(1, std::memory_order_relaxed);
     }
 
     buffer_[head] = std::move(item);
@@ -67,9 +67,9 @@ public:
     return static_cast<float>(used) / static_cast<float>(Capacity);
   }
 
-  uint64_t drops() const { return drops_; }
+  uint64_t drops() const { return drops_.load(std::memory_order_relaxed); }
 
-  void reset_drops() { drops_ = 0; }
+  void reset_drops() { drops_.store(0, std::memory_order_relaxed); }
 
   static constexpr size_t capacity() { return Capacity; }
 

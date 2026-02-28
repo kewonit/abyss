@@ -85,24 +85,6 @@ interface FlowEndpoints {
   dstLat: number;
 }
 
-export function buildCableIndex(
-  cables: CableCollection,
-): Map<string, number[][]> {
-  const index = new Map<string, number[][]>();
-  for (const f of cables.features) {
-    const id = f.properties.id;
-    if (!index.has(id)) index.set(id, []);
-    const coords = index.get(id)!;
-    for (const line of f.geometry.coordinates) {
-      for (let i = 0; i < line.length; i += 4) {
-        coords.push(line[i]);
-      }
-      if (line.length > 1) coords.push(line[line.length - 1]);
-    }
-  }
-  return index;
-}
-
 function crossTrackDistance(
   pointLat: number,
   pointLng: number,
@@ -153,114 +135,6 @@ function bearing(
     Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dL);
 
   return Math.atan2(y, x);
-}
-
-function isFeatureOnRoute(
-  f: CableFeature,
-  flow: FlowEndpoints,
-  corridorWidthKm: number,
-): boolean {
-  const directDist = hav(flow.srcLat, flow.srcLng, flow.dstLat, flow.dstLng);
-
-  let totalPoints = 0;
-  let pointsInCorridor = 0;
-  let hasNearSource = false;
-  let hasNearDest = false;
-
-  for (const line of f.geometry.coordinates) {
-    for (const [lng, lat] of line) {
-      totalPoints++;
-
-      const crossDist = crossTrackDistance(
-        lat,
-        lng,
-        flow.srcLat,
-        flow.srcLng,
-        flow.dstLat,
-        flow.dstLng,
-      );
-      const alongPos = alongTrackPosition(
-        lat,
-        lng,
-        flow.srcLat,
-        flow.srcLng,
-        flow.dstLat,
-        flow.dstLng,
-      );
-
-      if (crossDist < corridorWidthKm && alongPos >= -0.1 && alongPos <= 1.1) {
-        pointsInCorridor++;
-      }
-
-      const distToSrc = hav(flow.srcLat, flow.srcLng, lat, lng);
-      const distToDst = hav(flow.dstLat, flow.dstLng, lat, lng);
-
-      if (distToSrc < corridorWidthKm * 2) hasNearSource = true;
-      if (distToDst < corridorWidthKm * 2) hasNearDest = true;
-    }
-  }
-
-  if (totalPoints === 0) return false;
-
-  const corridorRatio = pointsInCorridor / totalPoints;
-  return (
-    corridorRatio >= 0.6 ||
-    (hasNearSource && hasNearDest) ||
-    (corridorRatio >= 0.4 && (hasNearSource || hasNearDest))
-  );
-}
-
-function traceRoute(
-  cables: CableCollection,
-  systemId: string,
-  flow: FlowEndpoints,
-): string[] {
-  const features = cables.features.filter((f) => f.properties.id === systemId);
-  if (features.length === 0) return [];
-  if (features.length === 1) {
-    return features[0].properties.feature_id
-      ? [features[0].properties.feature_id]
-      : [];
-  }
-
-  const directDist = hav(flow.srcLat, flow.srcLng, flow.dstLat, flow.dstLng);
-  const corridorWidth = Math.max(100, Math.min(400, directDist * 0.15));
-
-  const onRouteFeatures: string[] = [];
-  for (const f of features) {
-    if (isFeatureOnRoute(f, flow, corridorWidth)) {
-      onRouteFeatures.push(f.properties.feature_id);
-    }
-  }
-
-  if (onRouteFeatures.length === 0) {
-    let srcFid = "",
-      dstFid = "";
-    let srcMin = Infinity,
-      dstMin = Infinity;
-
-    for (const f of features) {
-      for (const line of f.geometry.coordinates) {
-        for (const [lng, lat] of line) {
-          const dS = hav(flow.srcLat, flow.srcLng, lat, lng);
-          const dD = hav(flow.dstLat, flow.dstLng, lat, lng);
-          if (dS < srcMin) {
-            srcMin = dS;
-            srcFid = f.properties.feature_id;
-          }
-          if (dD < dstMin) {
-            dstMin = dD;
-            dstFid = f.properties.feature_id;
-          }
-        }
-      }
-    }
-
-    if (srcFid) onRouteFeatures.push(srcFid);
-    if (dstFid && dstFid !== srcFid) onRouteFeatures.push(dstFid);
-  }
-
-  return onRouteFeatures;
 }
 
 export interface FlowEndpointsWithId extends FlowEndpoints {
@@ -350,10 +224,8 @@ function scoreFeatureForRoute(
 }
 
 export function matchFlowsPerFlow(
-  _index: Map<string, number[][]>,
   flows: FlowEndpointsWithId[],
   cables: CableCollection,
-  _thresholdKm = 150,
 ): Map<string, Set<string>> {
   const perFlowCables = new Map<string, Set<string>>();
 
@@ -409,25 +281,4 @@ export function matchFlowsPerFlow(
   }
 
   return perFlowCables;
-}
-
-export function matchFlows(
-  index: Map<string, number[][]>,
-  flows: FlowEndpoints[],
-  cables: CableCollection,
-  thresholdKm = 150,
-): Set<string> {
-  const extendedFlows: FlowEndpointsWithId[] = flows.map((f, i) => ({
-    ...f,
-    flowId: `flow_${i}`,
-  }));
-
-  const perFlow = matchFlowsPerFlow(index, extendedFlows, cables, thresholdKm);
-  const combined = new Set<string>();
-
-  for (const cables of perFlow.values()) {
-    for (const fid of cables) combined.add(fid);
-  }
-
-  return combined;
 }

@@ -45,7 +45,6 @@ Makefile
 
 # Rust
 target/
-Cargo.lock
 
 # Logs
 *.log
@@ -61,3 +60,10 @@ pnpm-debug.log*
 
 # Npcap SDK (don't commit third-party SDK)
 npcap-sdk/
+
+# Build artifacts & release binaries
+artifacts/
+
+# Internal planning docs
+docs/internal/
+scripts

@@ -65,6 +65,8 @@ constexpr uint8_t TCP_FIN = 0x01;
 constexpr uint16_t ETH_TYPE_IP   = 0x0800;
 constexpr uint16_t ETH_TYPE_ARP  = 0x0806;
 constexpr uint16_t ETH_TYPE_IPV6 = 0x86DD;
+constexpr uint16_t ETH_TYPE_VLAN = 0x8100; // 802.1Q VLAN tag
+constexpr uint16_t ETH_TYPE_QINQ = 0x88A8; // 802.1ad QinQ
 
 static uint16_t ntohs_portable(uint16_t v) {
   const uint8_t* b = reinterpret_cast<const uint8_t*>(&v);
@@ -270,6 +272,20 @@ PacketHeader CaptureEngine::parse_packet(
     return ph;
   }
 
+  // Strip 802.1Q/QinQ VLAN tags (4 bytes each)
+  for (int vlan_layers = 0; vlan_layers < 2; vlan_layers++) {
+    if (eth_type == ETH_TYPE_VLAN || eth_type == ETH_TYPE_QINQ) {
+      if (caplen < eth_offset + 4) return ph;
+      // Inner ethertype is at offset +2 within the VLAN tag
+      eth_type = ntohs_portable(
+        *reinterpret_cast<const uint16_t*>(data + eth_offset + 2)
+      );
+      eth_offset += 4;
+    } else {
+      break;
+    }
+  }
+
   if (eth_type == ETH_TYPE_ARP) {
     ph.is_arp = true;
     return ph;
@@ -281,12 +297,16 @@ PacketHeader CaptureEngine::parse_packet(
 
     if (ip->version() != 4) return ph;
 
+    // Validate IHL doesn't exceed captured data
+    const uint8_t ihl_bytes = ip->ihl();
+    if (ihl_bytes < 20 || caplen < eth_offset + ihl_bytes) return ph;
+
     ph.ip_version = 4;
     ph.src_ip = ntohl_portable(ip->src_addr);
     ph.dst_ip = ntohl_portable(ip->dst_addr);
     ph.protocol = ip->protocol;
 
-    size_t l4_offset = eth_offset + ip->ihl();
+    size_t l4_offset = eth_offset + ihl_bytes;
 
     if (ip->protocol == IPPROTO_ICMP) {
       ph.is_icmp = true;
@@ -319,28 +339,58 @@ PacketHeader CaptureEngine::parse_packet(
   if (eth_type == ETH_TYPE_IPV6) {
     if (caplen < eth_offset + 40) return ph;
     ph.ip_version = 6;
-    ph.protocol = data[eth_offset + 6];
-    uint32_t src_hash = 0, dst_hash = 0;
+
+    // Hash 128-bit IPv6 addresses into 32-bit keys (FNV-1a)
+    uint32_t src_hash = 2166136261u, dst_hash = 2166136261u;
     for (int i = 0; i < 16; i++) {
-      src_hash = src_hash * 31 + data[eth_offset + 8 + i];
-      dst_hash = dst_hash * 31 + data[eth_offset + 24 + i];
+      src_hash ^= data[eth_offset + 8 + i];
+      src_hash *= 16777619u;
+      dst_hash ^= data[eth_offset + 24 + i];
+      dst_hash *= 16777619u;
     }
     ph.src_ip = src_hash;
     ph.dst_ip = dst_hash;
 
+    // Walk IPv6 extension header chain to find the transport protocol
+    uint8_t next_header = data[eth_offset + 6];
     size_t l4_offset = eth_offset + 40;
-    if (ph.protocol == IPPROTO_TCP && caplen >= l4_offset + 20) {
+    constexpr int MAX_EXT_HEADERS = 8; // guard against malformed chains
+
+    for (int ext = 0; ext < MAX_EXT_HEADERS; ext++) {
+      // Check if this is an extension header that needs skipping
+      bool is_extension = (next_header == 0  ||  // Hop-by-Hop
+                           next_header == 43 ||  // Routing
+                           next_header == 44 ||  // Fragment
+                           next_header == 60);   // Destination Options
+      if (!is_extension) break;
+
+      // Extension headers: first byte = next header, second byte = length in 8-byte units
+      if (caplen < l4_offset + 2) break;
+      uint8_t ext_next = data[l4_offset];
+      size_t ext_len = static_cast<size_t>(data[l4_offset + 1]) * 8 + 8;
+      // Fragment header is fixed 8 bytes (length field is reserved, always 0)
+      if (next_header == 44) ext_len = 8;
+
+      l4_offset += ext_len;
+      next_header = ext_next;
+
+      if (l4_offset > caplen) break;
+    }
+
+    ph.protocol = next_header;
+
+    if (next_header == IPPROTO_TCP && caplen >= l4_offset + 20) {
       const auto* tcp = reinterpret_cast<const TcpHeader*>(data + l4_offset);
       ph.src_port = ntohs_portable(tcp->src_port);
       ph.dst_port = ntohs_portable(tcp->dst_port);
       ph.tcp_flags = tcp->flags;
     }
-    if (ph.protocol == IPPROTO_UDP && caplen >= l4_offset + 8) {
+    if (next_header == IPPROTO_UDP && caplen >= l4_offset + 8) {
       const auto* udp = reinterpret_cast<const UdpHeader*>(data + l4_offset);
       ph.src_port = ntohs_portable(udp->src_port);
       ph.dst_port = ntohs_portable(udp->dst_port);
     }
-    if (ph.protocol == 58) {
+    if (next_header == 58) { // ICMPv6
       ph.is_icmp = true;
     }
     if (ph.src_port == 53 || ph.dst_port == 53) {
