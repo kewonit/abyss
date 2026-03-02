@@ -1,16 +1,5 @@
-import React, { useEffect, useState, useMemo } from "react";
-import {
-  ArrowLeft,
-  BarChart3,
-  Globe,
-  Cpu,
-  Database,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-  Activity,
-  Clock,
-} from "lucide-react";
+﻿import React, { useEffect, useState, useMemo } from "react";
+import { ArrowLeft } from "lucide-react";
 import { useTelemetryStore } from "../telemetry/store";
 import {
   getGlobalStats,
@@ -25,18 +14,12 @@ import {
   type SessionInfo,
 } from "../telemetry/sessions";
 import { UPlotChart, type SeriesConfig } from "./UPlotChart";
-import {
-  formatDataSize,
-  formatDuration,
-  formatDateWithYear,
-  formatCompact,
-  countryFlag,
-} from "../lib/utils";
+import { formatDataSize, formatDuration, formatDateWithYear, countryFlag } from "../lib/utils";
 import { Button } from "./ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Skeleton } from "./ui/skeleton";
 
-type TimeRange = 7 | 30 | 0; // 7d, 30d, all time
+type TimeRange = 7 | 30 | 0;
 
 export const AnalyticsDashboard: React.FC = () => {
   const setView = useTelemetryStore((s) => s.setView);
@@ -79,7 +62,6 @@ export const AnalyticsDashboard: React.FC = () => {
     };
   }, [range]);
 
-  // Keyboard: Escape goes back
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.code === "Escape") {
@@ -91,24 +73,18 @@ export const AnalyticsDashboard: React.FC = () => {
     return () => window.removeEventListener("keydown", handler);
   }, [setView]);
 
-  // ── Daily usage chart data ─────────────────────────────────────────────
   const dailyChartData = useMemo(() => {
     if (daily.length === 0) return null;
-
     const timestamps = new Float64Array(daily.length);
     const upload = new Float64Array(daily.length);
     const download = new Float64Array(daily.length);
-
     for (let i = 0; i < daily.length; i++) {
       const d = daily[i];
-      // Parse "YYYY-MM-DD" to epoch seconds
       const ts = new Date(d.date + "T00:00:00").getTime() / 1000;
       timestamps[i] = Number.isFinite(ts) ? ts : 0;
-      // Convert bytes to GB for chart readability
       upload[i] = Number.isFinite(d.bytesUp) ? d.bytesUp / 1e9 : 0;
       download[i] = Number.isFinite(d.bytesDown) ? d.bytesDown / 1e9 : 0;
     }
-
     return [timestamps, upload, download] as [Float64Array, Float64Array, Float64Array];
   }, [daily]);
 
@@ -120,12 +96,10 @@ export const AnalyticsDashboard: React.FC = () => {
     []
   );
 
-  // ── Total traffic from daily ───────────────────────────────────────────
   const totalUp = daily.reduce((s, d) => s + (d.bytesUp || 0), 0);
   const totalDown = daily.reduce((s, d) => s + (d.bytesDown || 0), 0);
   const totalSessions = daily.reduce((s, d) => s + (d.sessionCount || 0), 0);
   const totalHours = daily.reduce((s, d) => s + (d.totalDurationSecs || 0), 0) / 3600;
-
   const rangeLabel = range === 7 ? "Last 7 days" : range === 30 ? "Last 30 days" : "All time";
 
   if (loading) {
@@ -152,7 +126,7 @@ export const AnalyticsDashboard: React.FC = () => {
   if (error) {
     return (
       <div className="flex items-center justify-center w-full h-full bg-[rgba(var(--ui-bg),0.95)]">
-        <span className="text-[13px] text-(--accent-red)">Error: {error}</span>
+        <span className="text-[15px] text-(--accent-red)">Error: {error}</span>
       </div>
     );
   }
@@ -160,268 +134,265 @@ export const AnalyticsDashboard: React.FC = () => {
   return (
     <div className="w-full h-full bg-[rgba(var(--ui-bg),0.95)] overflow-y-auto">
       <div className="max-w-5xl mx-auto" style={{ padding: "96px 48px 56px" }}>
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-10">
           <Button
             variant="ghost"
             size="sm"
-            className="gap-2 text-[12px] text-[rgba(var(--ui-fg),0.4)] hover:text-[rgba(var(--ui-fg),0.7)] -ml-2"
+            className="gap-2 text-[14px] text-[rgba(var(--ui-fg),0.35)] hover:text-[rgba(var(--ui-fg),0.7)] -ml-2"
             onClick={() => setView("live")}
           >
             <ArrowLeft size={14} />
-            <span>Back to live</span>
+            Back to live
           </Button>
 
-          {/* Time range selector */}
-          <div className="flex items-center gap-1 bg-[rgba(var(--ui-fg),0.03)] rounded-xl p-1">
+          <div className="flex items-center gap-0.5 bg-[rgba(var(--ui-fg),0.03)] border border-[rgba(var(--ui-fg),0.04)] rounded-lg p-0.5">
             {([7, 30, 0] as TimeRange[]).map((r) => (
-              <Button
+              <button
                 key={r}
-                variant={range === r ? "secondary" : "ghost"}
-                size="sm"
                 onClick={() => setRange(r)}
-                className={`text-[11px] rounded-lg px-3.5 h-7 ${
+                className={`text-[13px] font-medium rounded-md px-3 py-1.5 transition-all duration-150 ${
                   range === r
-                    ? "text-(--accent-cyan) bg-(--accent-cyan)/10 shadow-sm"
-                    : "text-[rgba(var(--ui-fg),0.3)] hover:text-[rgba(var(--ui-fg),0.6)]"
+                    ? "text-(--accent-cyan) bg-(--accent-cyan)/8 shadow-sm"
+                    : "text-[rgba(var(--ui-fg),0.3)] hover:text-[rgba(var(--ui-fg),0.5)]"
                 }`}
               >
                 {r === 7 ? "7d" : r === 30 ? "30d" : "All"}
-              </Button>
+              </button>
             ))}
           </div>
         </div>
 
-        {/* Title */}
-        <h1
-          className="text-[20px] font-semibold text-[rgba(var(--ui-fg),0.9)] flex items-center gap-2.5 mb-1.5"
-          style={{ letterSpacing: "-0.4px" }}
-        >
-          <BarChart3 size={20} className="text-(--accent-cyan)" />
-          Network Analytics
-        </h1>
-        <p className="text-[13px] text-[rgba(var(--ui-fg),0.35)] mb-8">
-          {rangeLabel} · {totalSessions} session
-          {totalSessions !== 1 ? "s" : ""}
-        </p>
-
-        {/* Summary cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-          <SummaryCard
-            label="Total Traffic"
-            value={formatDataSize(totalUp + totalDown)}
-            icon={<Activity size={14} />}
-            color="var(--accent-cyan)"
-          />
-          <SummaryCard
-            label="Upload"
-            value={formatDataSize(totalUp)}
-            icon={<ArrowUp size={14} />}
-            color="var(--accent-orange)"
-          />
-          <SummaryCard
-            label="Download"
-            value={formatDataSize(totalDown)}
-            icon={<ArrowDown size={14} />}
-            color="var(--accent-cyan)"
-          />
-          <SummaryCard
-            label="Recording Time"
-            value={formatDuration(totalHours * 3600)}
-            icon={<Clock size={14} />}
-            color="var(--accent-purple)"
-          />
+        <div className="mb-10">
+          <h1
+            className="text-[22px] font-semibold text-[rgba(var(--ui-fg),0.88)]"
+            style={{ letterSpacing: "-0.5px" }}
+          >
+            Analytics
+          </h1>
+          <p className="text-[14px] text-[rgba(var(--ui-fg),0.3)] mt-1 font-mono tabular-nums">
+            {rangeLabel} · {totalSessions} session{totalSessions !== 1 ? "s" : ""}
+          </p>
         </div>
 
-        {/* Global stats row */}
+        <div className="flex items-baseline gap-12 mb-10 flex-wrap">
+          <div className="min-w-28">
+            <div className="text-[13px] text-[rgba(var(--ui-fg),0.3)] mb-1">Traffic</div>
+            <div
+              className="text-[20px] font-semibold text-[rgba(var(--ui-fg),0.85)] font-mono tabular-nums"
+              style={{ letterSpacing: "-0.5px" }}
+            >
+              {formatDataSize(totalUp + totalDown)}
+            </div>
+          </div>
+          <div className="w-px h-8 bg-[rgba(var(--ui-fg),0.06)] self-center" />
+          <div className="min-w-24">
+            <div className="text-[13px] text-[rgba(var(--ui-fg),0.3)] mb-1">Up</div>
+            <div className="text-[17px] font-medium text-(--accent-orange)/70 font-mono tabular-nums">
+              {formatDataSize(totalUp)}
+            </div>
+          </div>
+          <div className="min-w-24">
+            <div className="text-[13px] text-[rgba(var(--ui-fg),0.3)] mb-1">Down</div>
+            <div className="text-[17px] font-medium text-(--accent-cyan)/70 font-mono tabular-nums">
+              {formatDataSize(totalDown)}
+            </div>
+          </div>
+          <div className="w-px h-8 bg-[rgba(var(--ui-fg),0.06)] self-center" />
+          <div className="min-w-28">
+            <div className="text-[13px] text-[rgba(var(--ui-fg),0.3)] mb-1">Recording</div>
+            <div className="text-[17px] font-medium text-[rgba(var(--ui-fg),0.6)] font-mono tabular-nums">
+              {formatDuration(totalHours * 3600)}
+            </div>
+          </div>
+        </div>
+
         {stats && (
-          <div className="grid grid-cols-3 gap-4 mb-10">
-            <MiniStat
-              label="Database Size"
-              value={`${Number.isFinite(stats.databaseSizeMb) ? stats.databaseSizeMb.toFixed(1) : "0.0"} MB`}
-            />
-            <MiniStat
-              label="Oldest Session"
-              value={stats.oldestSession ? formatDateWithYear(stats.oldestSession) : "—"}
-            />
-            <MiniStat
-              label="Newest Session"
-              value={stats.newestSession ? formatDateWithYear(stats.newestSession) : "—"}
-            />
+          <div className="flex items-center gap-6 mb-10 text-[13px] font-mono tabular-nums text-[rgba(var(--ui-fg),0.35)]">
+            <span>
+              DB{" "}
+              <span className="text-[rgba(var(--ui-fg),0.55)] font-semibold">
+                {Number.isFinite(stats.databaseSizeMb) ? stats.databaseSizeMb.toFixed(1) : "0.0"} MB
+              </span>
+            </span>
+            <span className="text-[rgba(var(--ui-fg),0.1)]">|</span>
+            <span>
+              Oldest{" "}
+              <span className="text-[rgba(var(--ui-fg),0.55)]">
+                {stats.oldestSession ? formatDateWithYear(stats.oldestSession) : "\u2014"}
+              </span>
+            </span>
+            <span className="text-[rgba(var(--ui-fg),0.1)]">|</span>
+            <span>
+              Newest{" "}
+              <span className="text-[rgba(var(--ui-fg),0.55)]">
+                {stats.newestSession ? formatDateWithYear(stats.newestSession) : "\u2014"}
+              </span>
+            </span>
           </div>
         )}
 
-        {/* Daily usage chart */}
-        <SectionHeader icon={<BarChart3 size={14} />} title="Daily Data Usage" />
-        {dailyChartData ? (
-          <div className="mb-10">
-            <UPlotChart
-              data={dailyChartData}
-              series={dailySeries}
-              height={220}
-              timeAxis
-              yFormat={(v) => (Number.isFinite(v) ? `${v.toFixed(1)} GB` : "0 GB")}
-            />
-          </div>
-        ) : (
-          <EmptyState message="No daily usage data yet" />
-        )}
+        <section className="mb-10">
+          <SectionLabel>Daily Usage</SectionLabel>
+          {dailyChartData ? (
+            <div className="rounded-xl border border-[rgba(var(--ui-fg),0.04)] bg-[rgba(var(--ui-fg),0.015)] p-4">
+              <UPlotChart
+                data={dailyChartData}
+                series={dailySeries}
+                height={200}
+                timeAxis
+                yFormat={(v) => (Number.isFinite(v) ? `${v.toFixed(1)} GB` : "0 GB")}
+              />
+            </div>
+          ) : (
+            <EmptyBlock>No daily usage data yet</EmptyBlock>
+          )}
+        </section>
 
-        {/* Two-column layout: destinations + apps */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-10">
-          {/* Top Destinations */}
-          <div>
-            <SectionHeader icon={<Globe size={14} />} title="Top Destinations" />
+          <section>
+            <SectionLabel>Top Destinations</SectionLabel>
             {destinations.length > 0 ? (
-              <div className="space-y-0.5">
+              <div className="rounded-xl border border-[rgba(var(--ui-fg),0.04)] bg-[rgba(var(--ui-fg),0.015)] divide-y divide-[rgba(var(--ui-fg),0.04)] overflow-hidden">
                 {destinations.map((d, i) => (
-                  <DestinationRow key={d.ip} rank={i + 1} dest={d} />
+                  <DestinationRow
+                    key={d.ip}
+                    rank={i + 1}
+                    dest={d}
+                    maxBytes={destinations[0]?.totalBytes || 1}
+                  />
                 ))}
               </div>
             ) : (
-              <EmptyState message="No destination data" />
+              <EmptyBlock>No destination data</EmptyBlock>
             )}
-          </div>
-
-          {/* Top Apps */}
-          <div>
-            <SectionHeader icon={<Cpu size={14} />} title="Top Applications" />
+          </section>
+          <section>
+            <SectionLabel>Top Applications</SectionLabel>
             {apps.length > 0 ? (
-              <div className="space-y-0.5">
+              <div className="rounded-xl border border-[rgba(var(--ui-fg),0.04)] bg-[rgba(var(--ui-fg),0.015)] divide-y divide-[rgba(var(--ui-fg),0.04)] overflow-hidden">
                 {apps.map((a, i) => (
-                  <AppRow key={a.processName} rank={i + 1} app={a} />
+                  <AppRow
+                    key={a.processName}
+                    rank={i + 1}
+                    app={a}
+                    maxBytes={(apps[0]?.totalBytesUp || 0) + (apps[0]?.totalBytesDown || 0) || 1}
+                  />
                 ))}
               </div>
             ) : (
-              <EmptyState message="No process data" />
+              <EmptyBlock>No process data</EmptyBlock>
             )}
-          </div>
+          </section>
         </div>
 
-        {/* Session comparison picker */}
         <CompareSessionsPicker />
       </div>
     </div>
   );
 };
 
-// ─── Sub-components ─────────────────────────────────────────────────────────
-
-const SummaryCard: React.FC<{
-  label: string;
-  value: string;
-  icon: React.ReactNode;
-  color: string;
-}> = ({ label, value, icon, color }) => (
-  <div
-    className="rounded-2xl border border-[rgba(var(--ui-fg),0.04)] bg-[rgba(var(--ui-fg),0.02)] card-hover"
-    style={{ padding: "18px 20px" }}
-  >
-    <div
-      className="flex items-center gap-2 text-[10px] uppercase tracking-wider font-medium mb-3"
-      style={{ color: `color-mix(in srgb, ${color}, transparent 35%)` }}
-    >
-      {icon}
-      {label}
-    </div>
-    <div
-      className="text-[20px] font-semibold text-[rgba(var(--ui-fg),0.85)]"
-      style={{ letterSpacing: "-0.3px" }}
-    >
-      {value}
-    </div>
+const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="flex items-center gap-3 mb-4">
+    <h2 className="text-[13px] font-bold tracking-[1.5px] uppercase text-[rgba(var(--ui-fg),0.25)] shrink-0">
+      {children}
+    </h2>
+    <div className="flex-1 h-px bg-[rgba(var(--ui-fg),0.04)]" />
   </div>
 );
 
-const MiniStat: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+const EmptyBlock: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div
-    className="rounded-xl border border-[rgba(var(--ui-fg),0.03)] bg-[rgba(var(--ui-fg),0.015)]"
-    style={{ padding: "14px 18px" }}
-  >
-    <div className="text-[10px] text-[rgba(var(--ui-fg),0.3)] uppercase tracking-wider mb-1.5">
-      {label}
-    </div>
-    <div className="text-[13px] text-[rgba(var(--ui-fg),0.55)] font-medium">{value}</div>
-  </div>
-);
-
-const SectionHeader: React.FC<{
-  icon: React.ReactNode;
-  title: string;
-}> = ({ icon, title }) => (
-  <div className="flex items-center gap-2.5 mb-4">
-    <span className="text-(--accent-cyan)">{icon}</span>
-    <h2 className="text-[14px] font-medium text-[rgba(var(--ui-fg),0.6)]">{title}</h2>
-  </div>
-);
-
-const EmptyState: React.FC<{ message: string }> = ({ message }) => (
-  <div
-    className="rounded-2xl border border-[rgba(var(--ui-fg),0.03)] bg-[rgba(var(--ui-fg),0.015)] text-[13px] text-[rgba(var(--ui-fg),0.25)] text-center"
+    className="rounded-xl border border-[rgba(var(--ui-fg),0.03)] bg-[rgba(var(--ui-fg),0.01)] text-[14px] text-[rgba(var(--ui-fg),0.2)] text-center"
     style={{ padding: "40px 20px" }}
   >
-    {message}
+    {children}
   </div>
 );
 
-const DestinationRow: React.FC<{
-  rank: number;
-  dest: TopDestination;
-}> = ({ rank, dest }) => {
+const DestinationRow: React.FC<{ rank: number; dest: TopDestination; maxBytes: number }> = ({
+  rank,
+  dest,
+  maxBytes,
+}) => {
   const displayName = dest.org || dest.ip;
   const location = [dest.city, dest.country].filter(Boolean).join(", ");
-
+  const pct = Math.max((dest.totalBytes / maxBytes) * 100, 0.5);
   return (
     <div
-      className="flex items-center gap-3 rounded-xl hover:bg-[rgba(var(--ui-fg),0.02)] transition-colors"
-      style={{ padding: "8px 12px" }}
+      className="relative flex items-center gap-3 hover:bg-[rgba(var(--ui-fg),0.02)] transition-colors duration-100"
+      style={{ padding: "10px 14px" }}
     >
-      <span className="text-[10px] text-[rgba(var(--ui-fg),0.2)] w-5 text-right font-mono">
+      <div
+        className="absolute inset-y-0 left-0 bg-(--accent-cyan) opacity-[0.025]"
+        style={{ width: `${pct}%` }}
+      />
+      <span className="text-[13px] text-[rgba(var(--ui-fg),0.18)] w-5 text-right font-mono tabular-nums relative">
         {rank}
       </span>
-      <div className="flex-1 min-w-0">
-        <div className="text-[13px] text-[rgba(var(--ui-fg),0.6)] truncate">{displayName}</div>
+      <div className="flex-1 min-w-0 relative">
+        <div className="text-[14px] font-medium text-[rgba(var(--ui-fg),0.6)] truncate">
+          {displayName}
+        </div>
         {location && (
-          <div className="text-[10px] text-[rgba(var(--ui-fg),0.25)] mt-0.5">{location}</div>
+          <div className="text-[13px] text-[rgba(var(--ui-fg),0.25)] mt-0.5 flex items-center gap-1">
+            {dest.country && (
+              <span className="text-[12px] leading-none">{countryFlag(dest.country)}</span>
+            )}
+            <span className="truncate">{location}</span>
+          </div>
         )}
       </div>
-      <div className="text-right">
-        <div className="text-[12px] text-[rgba(var(--ui-fg),0.5)] font-mono">
+      <div className="text-right relative shrink-0">
+        <div className="text-[13px] text-[rgba(var(--ui-fg),0.5)] font-mono tabular-nums">
           {formatDataSize(dest.totalBytes)}
         </div>
-        <div className="text-[10px] text-[rgba(var(--ui-fg),0.2)]">{dest.connectionCount} conn</div>
+        <div className="text-[13px] text-[rgba(var(--ui-fg),0.2)] font-mono tabular-nums">
+          {dest.connectionCount} conn
+        </div>
       </div>
     </div>
   );
 };
 
-const AppRow: React.FC<{
-  rank: number;
-  app: TopApp;
-}> = ({ rank, app }) => {
+const AppRow: React.FC<{ rank: number; app: TopApp; maxBytes: number }> = ({
+  rank,
+  app,
+  maxBytes,
+}) => {
   const total = (app.totalBytesUp || 0) + (app.totalBytesDown || 0);
-
+  const pct = Math.max((total / maxBytes) * 100, 0.5);
   return (
     <div
-      className="flex items-center gap-3 rounded-xl hover:bg-[rgba(var(--ui-fg),0.02)] transition-colors"
-      style={{ padding: "8px 12px" }}
+      className="relative flex items-center gap-3 hover:bg-[rgba(var(--ui-fg),0.02)] transition-colors duration-100"
+      style={{ padding: "10px 14px" }}
     >
-      <span className="text-[10px] text-[rgba(var(--ui-fg),0.2)] w-5 text-right font-mono">
+      <div
+        className="absolute inset-y-0 left-0 bg-(--accent-purple) opacity-[0.025]"
+        style={{ width: `${pct}%` }}
+      />
+      <span className="text-[13px] text-[rgba(var(--ui-fg),0.18)] w-5 text-right font-mono tabular-nums relative">
         {rank}
       </span>
-      <div className="flex-1 min-w-0">
-        <div className="text-[13px] text-[rgba(var(--ui-fg),0.6)] truncate">
+      <div className="flex-1 min-w-0 relative">
+        <div className="text-[14px] font-medium text-[rgba(var(--ui-fg),0.6)] truncate">
           {app.processName || "Unknown"}
         </div>
-        <div className="text-[10px] text-[rgba(var(--ui-fg),0.25)] mt-0.5">
-          ↑{formatDataSize(app.totalBytesUp)} ↓{formatDataSize(app.totalBytesDown)}
+        <div className="text-[13px] text-[rgba(var(--ui-fg),0.25)] mt-0.5 font-mono tabular-nums">
+          <span className="text-(--accent-orange)/60">
+            {"\u2191"}
+            {formatDataSize(app.totalBytesUp)}
+          </span>{" "}
+          <span className="text-(--accent-cyan)/60">
+            {"\u2193"}
+            {formatDataSize(app.totalBytesDown)}
+          </span>
         </div>
       </div>
-      <div className="text-right">
-        <div className="text-[12px] text-[rgba(var(--ui-fg),0.5)] font-mono">
+      <div className="text-right relative shrink-0">
+        <div className="text-[13px] text-[rgba(var(--ui-fg),0.5)] font-mono tabular-nums">
           {formatDataSize(total)}
         </div>
-        <div className="text-[10px] text-[rgba(var(--ui-fg),0.2)]">
+        <div className="text-[13px] text-[rgba(var(--ui-fg),0.2)] font-mono tabular-nums">
           {app.avgRtt > 0
             ? `${Number.isFinite(app.avgRtt) ? app.avgRtt.toFixed(0) : "0"}ms avg`
             : `${app.totalFlows} flows`}
@@ -430,8 +401,6 @@ const AppRow: React.FC<{
     </div>
   );
 };
-
-// ─── Compare Sessions Picker ────────────────────────────────────────────────
 
 const CompareSessionsPicker: React.FC = () => {
   const startComparison = useTelemetryStore((s) => s.startComparison);
@@ -449,85 +418,111 @@ const CompareSessionsPicker: React.FC = () => {
           setIdB(list[1].id);
         }
       })
-      .catch((e) => {
-        console.error("[CompareSessionsPicker] Failed to load sessions:", e);
-      })
+      .catch((e) => console.error("[CompareSessionsPicker] Failed to load sessions:", e))
       .finally(() => setLoaded(true));
   }, []);
 
   if (!loaded || sessions.length < 2) {
     return (
-      <div className="mb-8">
-        <SectionHeader icon={<ArrowUpDown size={14} />} title="Compare Sessions" />
-        <EmptyState
-          message={loaded ? "Need at least 2 sessions to compare" : "Loading sessions…"}
-        />
-      </div>
+      <section className="mb-8">
+        <SectionLabel>Compare</SectionLabel>
+        <EmptyBlock>
+          {loaded ? "Need at least 2 sessions to compare" : "Loading sessions\u2026"}
+        </EmptyBlock>
+      </section>
     );
   }
 
   const canCompare = idA && idB && idA !== idB;
+  const selectedA = sessions.find((s) => s.id === idA);
+  const selectedB = sessions.find((s) => s.id === idB);
 
   return (
-    <div className="mb-8">
-      <SectionHeader icon={<ArrowUpDown size={14} />} title="Compare Sessions" />
-      <div
-        className="rounded-(--pill-radius) border border-(--pill-border) bg-(--pill-bg) backdrop-blur-xl"
-        style={{ padding: "22px 24px" }}
-      >
-        <div className="mb-4 flex items-center justify-between gap-3 max-[760px]:mb-3 max-[760px]:flex-col max-[760px]:items-start">
-          <span className="text-[12px] font-medium text-[rgba(var(--ui-fg),0.62)]">
-            Pick two sessions to open side-by-side analysis.
-          </span>
-          <span className="text-[11px] font-mono tabular-nums text-[rgba(var(--ui-fg),0.36)]">
-            {sessions.length} available
-          </span>
+    <section className="mb-8">
+      <SectionLabel>Compare</SectionLabel>
+      <div className="grid grid-cols-[1fr_auto_1fr] items-stretch gap-4 max-[760px]:grid-cols-1 max-[760px]:gap-3">
+        <SessionSlot value={idA} sessions={sessions} session={selectedA} onChange={setIdA} />
+        <div className="flex flex-col items-center justify-center gap-3 max-[760px]:flex-row">
+          <div className="w-px flex-1 bg-[rgba(var(--ui-fg),0.04)] max-[760px]:hidden" />
+          <span className="text-[13px] text-[rgba(var(--ui-fg),0.12)] select-none">vs</span>
+          <div className="w-px flex-1 bg-[rgba(var(--ui-fg),0.04)] max-[760px]:hidden" />
         </div>
-
-        <div className="grid grid-cols-[1fr_1fr_auto] items-end gap-4 max-[760px]:grid-cols-1">
-          <SessionSelect label="Session A" value={idA} sessions={sessions} onChange={setIdA} />
-          <SessionSelect label="Session B" value={idB} sessions={sessions} onChange={setIdB} />
-          <Button
-            disabled={!canCompare}
-            onClick={() => canCompare && startComparison(idA, idB)}
-            size="sm"
-            className={`h-9 min-w-26 text-[11px] font-semibold tracking-[0.4px] uppercase whitespace-nowrap ${
-              canCompare
-                ? "border border-(--accent-cyan)/25 bg-(--accent-cyan)/12 text-(--accent-cyan) hover:bg-(--accent-cyan)/20"
-                : "border border-[rgba(var(--ui-fg),0.08)] bg-[rgba(var(--ui-fg),0.02)] text-[rgba(var(--ui-fg),0.3)] cursor-not-allowed"
-            }`}
-          >
-            Compare
-          </Button>
-        </div>
+        <SessionSlot value={idB} sessions={sessions} session={selectedB} onChange={setIdB} />
       </div>
-    </div>
+      <div className="mt-5 flex justify-end">
+        <button
+          disabled={!canCompare}
+          onClick={() => canCompare && startComparison(idA, idB)}
+          className={`text-[13px] font-medium h-8 rounded-md px-5 transition-all duration-150 ${
+            canCompare
+              ? "bg-[rgba(var(--ui-fg),0.82)] text-[rgba(var(--ui-bg),1)] hover:bg-[rgba(var(--ui-fg),0.95)] cursor-pointer"
+              : "bg-[rgba(var(--ui-fg),0.04)] text-[rgba(var(--ui-fg),0.15)] cursor-not-allowed"
+          }`}
+        >
+          Open comparison
+        </button>
+      </div>
+    </section>
   );
 };
 
-const SessionSelect: React.FC<{
-  label: string;
+const SessionSlot: React.FC<{
   value: string;
   sessions: SessionInfo[];
+  session?: SessionInfo;
   onChange: (id: string) => void;
-}> = ({ label, value, sessions, onChange }) => (
-  <div className="flex-1 min-w-0">
-    <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-[1.1px] text-[rgba(var(--ui-fg),0.34)]">
-      {label}
-    </div>
+}> = ({ value, sessions, session, onChange }) => (
+  <div className="rounded-lg border border-[rgba(var(--ui-fg),0.05)] bg-[rgba(var(--ui-fg),0.015)] p-4">
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="h-9 w-full border-[rgba(var(--ui-fg),0.08)] bg-[rgba(var(--ui-fg),0.02)] text-[12px] text-[rgba(var(--ui-fg),0.78)]">
-        <SelectValue />
+      <SelectTrigger className="h-8 w-full border-[rgba(var(--ui-fg),0.06)] bg-[rgba(var(--ui-fg),0.02)] text-[14px] text-[rgba(var(--ui-fg),0.55)] rounded-md hover:border-[rgba(var(--ui-fg),0.12)] transition-colors mb-3">
+        <SelectValue>{session ? session.name || "Unnamed" : "Select session…"}</SelectValue>
       </SelectTrigger>
       <SelectContent>
         {sessions.map((s) => (
           <SelectItem key={s.id} value={s.id}>
-            {s.name || "Unnamed"} — {formatDateWithYear(s.startedAt)}
+            <span className="text-[rgba(var(--ui-fg),0.65)]">{s.name || "Unnamed"}</span>
+            <span className="text-[rgba(var(--ui-fg),0.25)] ml-2">
+              {formatDateWithYear(s.startedAt)}
+            </span>
           </SelectItem>
         ))}
       </SelectContent>
     </Select>
+    {session && (
+      <div className="grid grid-cols-3 gap-x-4 gap-y-2 text-[13px] font-mono tabular-nums">
+        <div>
+          <div className="text-[rgba(var(--ui-fg),0.2)] text-[11px] mb-0.5">Date</div>
+          <div className="text-[rgba(var(--ui-fg),0.45)]">
+            {formatDateWithYear(session.startedAt)}
+          </div>
+        </div>
+        <div>
+          <div className="text-[rgba(var(--ui-fg),0.2)] text-[11px] mb-0.5">Duration</div>
+          <div className="text-[rgba(var(--ui-fg),0.45)]">
+            {session.durationSecs ? formatDuration(session.durationSecs) : "\u2014"}
+          </div>
+        </div>
+        <div>
+          <div className="text-[rgba(var(--ui-fg),0.2)] text-[11px] mb-0.5">Flows</div>
+          <div className="text-[rgba(var(--ui-fg),0.45)]">
+            {session.totalFlows.toLocaleString()}
+          </div>
+        </div>
+        <div>
+          <div className="text-[rgba(var(--ui-fg),0.2)] text-[11px] mb-0.5">Up</div>
+          <div className="text-(--accent-orange)/50">{formatDataSize(session.totalBytesUp)}</div>
+        </div>
+        <div>
+          <div className="text-[rgba(var(--ui-fg),0.2)] text-[11px] mb-0.5">Down</div>
+          <div className="text-(--accent-cyan)/50">{formatDataSize(session.totalBytesDown)}</div>
+        </div>
+        <div>
+          <div className="text-[rgba(var(--ui-fg),0.2)] text-[11px] mb-0.5">Latency</div>
+          <div className="text-[rgba(var(--ui-fg),0.45)]">
+            {session.avgLatencyMs > 0 ? `${session.avgLatencyMs.toFixed(0)}ms` : "\u2014"}
+          </div>
+        </div>
+      </div>
+    )}
   </div>
 );
-
-// ─── Helpers ────────────────────────────────────────────────────────────────

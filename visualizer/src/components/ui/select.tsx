@@ -14,7 +14,7 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-8 w-full items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-xs",
+      "flex h-8 w-full items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-[13px]",
       "bg-[rgba(var(--ui-fg),0.04)] border border-[rgba(var(--ui-fg),0.08)] text-[rgba(var(--ui-fg),0.8)]",
       "hover:bg-[rgba(var(--ui-fg),0.06)] transition-colors",
       "focus:outline-none focus:ring-2 focus:ring-[var(--accent-cyan)] focus:ring-offset-2 focus:ring-offset-[var(--page-bg)]",
@@ -104,7 +104,7 @@ const SelectLabel = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SelectPrimitive.Label
     ref={ref}
-    className={cn("px-2 py-1.5 text-xs font-semibold text-[rgba(var(--ui-fg),0.5)]", className)}
+    className={cn("px-2 py-1.5 text-[13px] font-semibold text-[rgba(var(--ui-fg),0.5)]", className)}
     {...props}
   />
 ));
@@ -117,7 +117,7 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex w-full cursor-pointer select-none items-center rounded-lg py-1.5 pl-2 pr-8 text-xs outline-none",
+      "relative flex w-full cursor-pointer select-none items-center rounded-lg py-1.5 pl-2 pr-8 text-[13px] outline-none",
       "text-[rgba(var(--ui-fg),0.7)]",
       "focus:bg-[rgba(var(--ui-fg),0.06)] focus:text-[rgba(var(--ui-fg),0.9)]",
       "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",

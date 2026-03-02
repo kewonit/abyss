@@ -92,17 +92,17 @@ export const CommandPalette: React.FC = () => {
         >
           <Command.Input
             placeholder="Type a command…"
-            className="w-full bg-transparent text-[13px] text-[rgba(var(--ui-fg),0.85)] placeholder:text-[rgba(var(--ui-fg),0.3)] outline-none border-b border-[rgba(var(--ui-fg),0.06)]"
+            className="w-full bg-transparent text-[15px] text-[rgba(var(--ui-fg),0.85)] placeholder:text-[rgba(var(--ui-fg),0.3)] outline-none border-b border-[rgba(var(--ui-fg),0.06)]"
             style={{ padding: "12px 16px" }}
           />
           <Command.List className="max-h-72 overflow-y-auto" style={{ padding: "6px" }}>
-            <Command.Empty className="text-[12px] text-[rgba(var(--ui-fg),0.35)] text-center py-6">
+            <Command.Empty className="text-[14px] text-[rgba(var(--ui-fg),0.35)] text-center py-6">
               No results found.
             </Command.Empty>
 
             <Command.Group
               heading="Navigation"
-              className="[&_[cmdk-group-heading]]:text-[9px] [&_[cmdk-group-heading]]:font-bold [&_[cmdk-group-heading]]:tracking-[1.5px] [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:text-[rgba(var(--ui-fg),0.25)] [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5"
+              className="[&_[cmdk-group-heading]]:text-[13px] [&_[cmdk-group-heading]]:font-bold [&_[cmdk-group-heading]]:tracking-[1.5px] [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:text-[rgba(var(--ui-fg),0.25)] [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5"
             >
               <PaletteItem
                 icon={<Activity size={14} />}
@@ -130,7 +130,7 @@ export const CommandPalette: React.FC = () => {
 
             <Command.Group
               heading="Actions"
-              className="[&_[cmdk-group-heading]]:text-[9px] [&_[cmdk-group-heading]]:font-bold [&_[cmdk-group-heading]]:tracking-[1.5px] [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:text-[rgba(var(--ui-fg),0.25)] [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5"
+              className="[&_[cmdk-group-heading]]:text-[13px] [&_[cmdk-group-heading]]:font-bold [&_[cmdk-group-heading]]:tracking-[1.5px] [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:text-[rgba(var(--ui-fg),0.25)] [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5"
             >
               <PaletteItem
                 icon={recording ? <Square size={14} /> : <Play size={14} />}
@@ -147,7 +147,7 @@ export const CommandPalette: React.FC = () => {
 
             <Command.Group
               heading="Appearance"
-              className="[&_[cmdk-group-heading]]:text-[9px] [&_[cmdk-group-heading]]:font-bold [&_[cmdk-group-heading]]:tracking-[1.5px] [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:text-[rgba(var(--ui-fg),0.25)] [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5"
+              className="[&_[cmdk-group-heading]]:text-[13px] [&_[cmdk-group-heading]]:font-bold [&_[cmdk-group-heading]]:tracking-[1.5px] [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:text-[rgba(var(--ui-fg),0.25)] [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5"
             >
               <PaletteItem
                 icon={
@@ -164,7 +164,7 @@ export const CommandPalette: React.FC = () => {
 
             <Command.Group
               heading="Keyboard Shortcuts"
-              className="[&_[cmdk-group-heading]]:text-[9px] [&_[cmdk-group-heading]]:font-bold [&_[cmdk-group-heading]]:tracking-[1.5px] [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:text-[rgba(var(--ui-fg),0.25)] [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5"
+              className="[&_[cmdk-group-heading]]:text-[13px] [&_[cmdk-group-heading]]:font-bold [&_[cmdk-group-heading]]:tracking-[1.5px] [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:text-[rgba(var(--ui-fg),0.25)] [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5"
             >
               <PaletteItem
                 icon={<Keyboard size={14} />}
@@ -198,14 +198,14 @@ const PaletteItem: React.FC<{
 }> = ({ icon, label, shortcut, onSelect, disabled }) => (
   <Command.Item
     onSelect={disabled ? undefined : onSelect}
-    className="flex items-center gap-2.5 rounded-lg cursor-pointer text-[12px] text-[rgba(var(--ui-fg),0.7)] data-[selected=true]:bg-[rgba(var(--ui-fg),0.06)] data-[selected=true]:text-[rgba(var(--ui-fg),0.95)] transition-colors duration-100"
+    className="flex items-center gap-2.5 rounded-lg cursor-pointer text-[14px] text-[rgba(var(--ui-fg),0.7)] data-[selected=true]:bg-[rgba(var(--ui-fg),0.06)] data-[selected=true]:text-[rgba(var(--ui-fg),0.95)] transition-colors duration-100"
     style={{ padding: "8px 10px" }}
     disabled={disabled}
   >
     <span className="text-[rgba(var(--ui-fg),0.4)] shrink-0">{icon}</span>
     <span className="flex-1">{label}</span>
     {shortcut && (
-      <span className="text-[10px] font-mono text-[rgba(var(--ui-fg),0.25)] bg-[rgba(var(--ui-fg),0.04)] px-1.5 py-0.5 rounded">
+      <span className="text-[14px] font-mono text-[rgba(var(--ui-fg),0.25)] bg-[rgba(var(--ui-fg),0.04)] px-1.5 py-0.5 rounded">
         {shortcut}
       </span>
     )}

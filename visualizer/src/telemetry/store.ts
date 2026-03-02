@@ -222,7 +222,17 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
     const state = useTelemetryStore.getState();
     if (state.playback.active) return;
 
+    // Heartbeat frames (light === true) carry empty flows — preserve existing
+    const isHeartbeat = frame.light === true;
+
     const derived = computeDerivedMetrics(frame);
+    // For heartbeats, keep the previous topCountries / topProtocols since
+    // the heartbeat's empty flows array would wipe them out
+    if (isHeartbeat) {
+      derived.topCountries = state.derived.topCountries;
+      derived.topProtocols = state.derived.topProtocols;
+    }
+
     const throughput = Number.isFinite(derived.throughputMbps)
       ? Math.max(0, derived.throughputMbps)
       : 0;
@@ -231,10 +241,12 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
     throughputRing.push(throughput);
     latencyRing.push(latency);
 
+    const flows = isHeartbeat ? state.flows : Array.isArray(frame.flows) ? frame.flows : [];
+
     set({
       frame,
       derived,
-      flows: Array.isArray(frame.flows) ? frame.flows : [],
+      flows,
       throughputHistory: throughputRing.toArray(),
       latencyHistory: latencyRing.toArray(),
     });
@@ -302,7 +314,32 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
     throughputRing.clear();
     latencyRing.clear();
 
+    const localLat = data.session.localLat ?? 0;
+    const localLng = data.session.localLng ?? 0;
+
+    // Immediately build frame 0 so flows are populated from the start
+    // This prevents the "Waiting for network activity" flash
+    let initialState: Record<string, unknown> = {};
+    if (data.frames.length > 0) {
+      const fr = data.frames[0];
+      // Collect flows from the first few frames to avoid empty state on sparse recordings
+      const windowFlows: PlaybackFlowRecord[] = [];
+      const windowSize = Math.min(3, data.frames.length);
+      for (let i = 0; i < windowSize; i++) {
+        const frameFl = flowsByFrame.get(data.frames[i].frameId) ?? [];
+        windowFlows.push(...frameFl);
+      }
+      // Deduplicate by flowId (keep latest)
+      const deduped = new Map<string, PlaybackFlowRecord>();
+      for (const f of windowFlows) deduped.set(f.flowId, f);
+      const frameFlows =
+        deduped.size > 0 ? Array.from(deduped.values()) : (flowsByFrame.get(fr.frameId) ?? []);
+      const result = buildPlaybackFrame(fr, frameFlows, localLat, localLng);
+      initialState = result;
+    }
+
     set({
+      ...initialState,
       view: "playback" as AppView,
       playback: {
         active: true,
@@ -312,8 +349,8 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
         sessionInfo: data.session,
         frames: data.frames,
         flowsByFrame,
-        localLat: data.session.localLat ?? 0,
-        localLng: data.session.localLng ?? 0,
+        localLat,
+        localLng,
       },
     });
   },
@@ -354,7 +391,20 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
 
       const clamped = Math.max(0, Math.min(index, frames.length - 1));
       const fr = frames[clamped];
-      const frameFlows = flowsByFrame.get(fr.frameId) ?? [];
+
+      // Use a sliding window of ±2 frames to collect flows — prevents empty
+      // state on sparse recordings where some frames have 0 associated flows.
+      const windowFlows: PlaybackFlowRecord[] = [];
+      const windowStart = Math.max(0, clamped - 2);
+      const windowEnd = Math.min(frames.length - 1, clamped + 2);
+      for (let i = windowStart; i <= windowEnd; i++) {
+        const fls = flowsByFrame.get(frames[i].frameId) ?? [];
+        windowFlows.push(...fls);
+      }
+      // Deduplicate by flowId — keep the entry closest to current position
+      const deduped = new Map<string, PlaybackFlowRecord>();
+      for (const f of windowFlows) deduped.set(f.flowId, f);
+      const frameFlows = deduped.size > 0 ? Array.from(deduped.values()) : [];
 
       const result = buildPlaybackFrame(fr, frameFlows, localLat, localLng);
       return {
@@ -374,7 +424,18 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
 
       const { frames, flowsByFrame, localLat, localLng } = s.playback;
       const fr = frames[next];
-      const frameFlows = flowsByFrame.get(fr.frameId) ?? [];
+
+      // Use a sliding window of ±2 frames to collect flows — same as seekPlayback
+      const windowFlows: PlaybackFlowRecord[] = [];
+      const windowStart = Math.max(0, next - 2);
+      const windowEnd = Math.min(frames.length - 1, next + 2);
+      for (let i = windowStart; i <= windowEnd; i++) {
+        const fls = flowsByFrame.get(frames[i].frameId) ?? [];
+        windowFlows.push(...fls);
+      }
+      const deduped = new Map<string, PlaybackFlowRecord>();
+      for (const f of windowFlows) deduped.set(f.flowId, f);
+      const frameFlows = deduped.size > 0 ? Array.from(deduped.values()) : [];
 
       const result = buildPlaybackFrame(fr, frameFlows, localLat, localLng);
       return {

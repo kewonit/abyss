@@ -16,7 +16,7 @@ function Badge({ className, variant = "default", ...props }: BadgeProps) {
   return (
     <div
       className={cn(
-        "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium transition-colors",
+        "inline-flex items-center rounded-md px-2 py-0.5 text-[13px] font-medium transition-colors",
         "focus:outline-none focus:ring-2 focus:ring-[var(--accent-cyan)] focus:ring-offset-2",
         variant === "default" &&
           "bg-[var(--accent-cyan)]/10 text-[var(--accent-cyan)] border border-[var(--accent-cyan)]/20",

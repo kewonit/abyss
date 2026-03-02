@@ -132,7 +132,7 @@ export default function App() {
                     Abyss
                   </span>
                 </div>
-                <span className="text-[11px] text-[rgba(var(--ui-fg),0.3)]">
+                <span className="text-[13px] text-[rgba(var(--ui-fg),0.3)]">
                   Connecting to sniffer…
                 </span>
                 <div className="flex gap-1 mt-2">

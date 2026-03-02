@@ -228,7 +228,7 @@ export const SessionDetail: React.FC = () => {
       <div className="w-full h-full bg-[rgba(var(--ui-bg),0.95)]">
         {error ? (
           <div className="flex items-center justify-center w-full h-full">
-            <span className="text-[13px] text-(--accent-red)">Error: {error}</span>
+            <span className="text-[15px] text-(--accent-red)">Error: {error}</span>
           </div>
         ) : (
           <div className="max-w-5xl mx-auto" style={{ padding: "60px 24px 40px" }}>
@@ -256,7 +256,7 @@ export const SessionDetail: React.FC = () => {
           <Button
             variant="ghost"
             size="sm"
-            className="gap-1.5 text-[12px] text-[rgba(var(--ui-fg),0.4)] hover:text-[rgba(var(--ui-fg),0.7)]"
+            className="gap-1.5 text-[14px] text-[rgba(var(--ui-fg),0.4)] hover:text-[rgba(var(--ui-fg),0.7)]"
             onClick={handleBack}
           >
             <ArrowLeft size={13} />
@@ -268,7 +268,7 @@ export const SessionDetail: React.FC = () => {
             <Button
               variant="outline"
               size="sm"
-              className="gap-1.5 text-[11px] text-(--accent-cyan) hover:brightness-125"
+              className="gap-1.5 text-[13px] text-(--accent-cyan) hover:brightness-125"
               onClick={handlePlay}
               title="Replay this session on the map"
             >
@@ -278,7 +278,7 @@ export const SessionDetail: React.FC = () => {
             <Button
               variant="outline"
               size="sm"
-              className="gap-1.5 text-[11px] text-[rgba(var(--ui-fg),0.35)] hover:text-[rgba(var(--ui-fg),0.6)]"
+              className="gap-1.5 text-[13px] text-[rgba(var(--ui-fg),0.35)] hover:text-[rgba(var(--ui-fg),0.6)]"
               onClick={() => handleExport("csv")}
               disabled={exporting}
               title="Export as CSV"
@@ -289,7 +289,7 @@ export const SessionDetail: React.FC = () => {
             <Button
               variant="outline"
               size="sm"
-              className="gap-1.5 text-[11px] text-[rgba(var(--ui-fg),0.35)] hover:text-[rgba(var(--ui-fg),0.6)]"
+              className="gap-1.5 text-[13px] text-[rgba(var(--ui-fg),0.35)] hover:text-[rgba(var(--ui-fg),0.6)]"
               onClick={() => handleExport("json")}
               disabled={exporting}
               title="Export as JSON"
@@ -300,7 +300,6 @@ export const SessionDetail: React.FC = () => {
           </div>
         </div>
 
-        {/* Session header */}
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-1">
             {editingName ? (
@@ -349,7 +348,7 @@ export const SessionDetail: React.FC = () => {
               </div>
             )}
           </div>
-          <div className="flex items-center gap-3 text-[11px] text-[rgba(var(--ui-fg),0.35)] font-mono tabular-nums">
+          <div className="flex items-center gap-3 text-[13px] text-[rgba(var(--ui-fg),0.35)] font-mono tabular-nums">
             <span>{formatTimestamp(session.startedAt)}</span>
             <span className="text-[rgba(var(--ui-fg),0.2)]">
               {formatRelativeTime(session.startedAt)}
@@ -373,29 +372,27 @@ export const SessionDetail: React.FC = () => {
           </div>
         </div>
 
-        {/* Summary cards */}
         <SummaryCards session={session} />
 
-        {/* Tab bar */}
         <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="mt-8 mb-6">
           <TabsList className="bg-transparent p-0 gap-0 border-b border-[rgba(var(--ui-fg),0.06)] rounded-none w-full justify-start">
             <TabsTrigger
               value="overview"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-(--accent-cyan) data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-[rgba(var(--ui-fg),0.8)] text-[rgba(var(--ui-fg),0.3)] text-[11px] font-semibold tracking-[0.5px] uppercase px-3.5 py-2"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-(--accent-cyan) data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-[rgba(var(--ui-fg),0.8)] text-[rgba(var(--ui-fg),0.3)] text-[13px] font-semibold tracking-[0.5px] uppercase px-3.5 py-2"
             >
               <Activity size={11} className="mr-1.5 -mt-px" />
               overview
             </TabsTrigger>
             <TabsTrigger
               value="destinations"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-(--accent-cyan) data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-[rgba(var(--ui-fg),0.8)] text-[rgba(var(--ui-fg),0.3)] text-[11px] font-semibold tracking-[0.5px] uppercase px-3.5 py-2"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-(--accent-cyan) data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-[rgba(var(--ui-fg),0.8)] text-[rgba(var(--ui-fg),0.3)] text-[13px] font-semibold tracking-[0.5px] uppercase px-3.5 py-2"
             >
               <Globe size={11} className="mr-1.5 -mt-px" />
               destinations
             </TabsTrigger>
             <TabsTrigger
               value="processes"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-(--accent-cyan) data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-[rgba(var(--ui-fg),0.8)] text-[rgba(var(--ui-fg),0.3)] text-[11px] font-semibold tracking-[0.5px] uppercase px-3.5 py-2"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-(--accent-cyan) data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-[rgba(var(--ui-fg),0.8)] text-[rgba(var(--ui-fg),0.3)] text-[13px] font-semibold tracking-[0.5px] uppercase px-3.5 py-2"
             >
               <Cpu size={11} className="mr-1.5 -mt-px" />
               processes
@@ -406,8 +403,6 @@ export const SessionDetail: React.FC = () => {
         {/* Tab content */}
         {tab === "overview" && (
           <div className="tab-content-enter" key="overview">
-            {/* Section navigation sidebar TOC */}
-            <SectionToc hasInsights={!!insights} hasAnomalies={anomalies.length > 0} />
             <OverviewTab frames={frames} flows={flows} />
             {insights && <InsightsPanel insights={insights} />}
             {anomalies.length > 0 && <AnomalyPanel anomalies={anomalies} />}
@@ -490,14 +485,14 @@ const SummaryCards: React.FC<{ session: SessionInfo }> = ({ session }) => {
           className="bg-[rgba(var(--ui-fg),0.02)] border border-[rgba(var(--ui-fg),0.05)] rounded-xl"
           style={{ padding: "14px 16px" }}
         >
-          <span className="text-[9px] font-semibold tracking-[1.2px] uppercase text-[rgba(var(--ui-fg),0.25)] block mb-1">
+          <span className="text-[13px] font-semibold tracking-[1.2px] uppercase text-[rgba(var(--ui-fg),0.25)] block mb-1">
             {card.label}
           </span>
           <span className="text-[16px] font-bold text-[rgba(var(--ui-fg),0.85)] font-mono tabular-nums block">
             {card.value}
           </span>
           {card.sub && (
-            <span className="text-[10px] text-[rgba(var(--ui-fg),0.3)] block mt-0.5">
+            <span className="text-[14px] text-[rgba(var(--ui-fg),0.3)] block mt-0.5">
               {card.sub}
             </span>
           )}
@@ -516,7 +511,7 @@ const OverviewTab: React.FC<{
   if (frames.length === 0) {
     return (
       <div className="flex items-center justify-center h-40">
-        <span className="text-[11px] text-[rgba(var(--ui-fg),0.3)]">No frame data recorded</span>
+        <span className="text-[13px] text-[rgba(var(--ui-fg),0.3)]">No frame data recorded</span>
       </div>
     );
   }
@@ -663,17 +658,17 @@ const OverviewTab: React.FC<{
         >
           <div className="flex items-center gap-2 mb-4">
             <BarChart3 size={12} className="text-[rgba(var(--ui-fg),0.3)]" />
-            <span className="text-[10px] font-semibold tracking-[1px] uppercase text-[rgba(var(--ui-fg),0.3)]">
+            <span className="text-[14px] font-semibold tracking-[1px] uppercase text-[rgba(var(--ui-fg),0.3)]">
               Protocol Distribution
             </span>
           </div>
           {protocolBreakdown.length === 0 ? (
-            <span className="text-[11px] text-[rgba(var(--ui-fg),0.2)]">No data</span>
+            <span className="text-[13px] text-[rgba(var(--ui-fg),0.2)]">No data</span>
           ) : (
             <div className="flex flex-col gap-2">
               {protocolBreakdown.map((p, i) => (
                 <div key={p.name} className="flex items-center gap-3">
-                  <span className="text-[10px] font-mono font-medium text-[rgba(var(--ui-fg),0.6)] w-12 shrink-0">
+                  <span className="text-[14px] font-mono font-medium text-[rgba(var(--ui-fg),0.6)] w-12 shrink-0">
                     {p.name}
                   </span>
                   <div className="flex-1 h-3.5 bg-[rgba(var(--ui-fg),0.03)] rounded-full overflow-hidden">
@@ -686,7 +681,7 @@ const OverviewTab: React.FC<{
                       }}
                     />
                   </div>
-                  <span className="text-[10px] font-mono tabular-nums text-[rgba(var(--ui-fg),0.4)] w-10 text-right shrink-0">
+                  <span className="text-[14px] font-mono tabular-nums text-[rgba(var(--ui-fg),0.4)] w-10 text-right shrink-0">
                     {p.pct.toFixed(0)}%
                   </span>
                 </div>
@@ -702,17 +697,17 @@ const OverviewTab: React.FC<{
         >
           <div className="flex items-center gap-2 mb-4">
             <Globe size={12} className="text-[rgba(var(--ui-fg),0.3)]" />
-            <span className="text-[10px] font-semibold tracking-[1px] uppercase text-[rgba(var(--ui-fg),0.3)]">
+            <span className="text-[14px] font-semibold tracking-[1px] uppercase text-[rgba(var(--ui-fg),0.3)]">
               Service Breakdown
             </span>
           </div>
           {serviceBreakdown.length === 0 ? (
-            <span className="text-[11px] text-[rgba(var(--ui-fg),0.2)]">No data</span>
+            <span className="text-[13px] text-[rgba(var(--ui-fg),0.2)]">No data</span>
           ) : (
             <div className="flex flex-col gap-2">
               {serviceBreakdown.map((s, i) => (
                 <div key={s.name} className="flex items-center gap-3">
-                  <span className="text-[10px] font-mono font-medium text-[rgba(var(--ui-fg),0.6)] w-16 shrink-0 truncate">
+                  <span className="text-[14px] font-mono font-medium text-[rgba(var(--ui-fg),0.6)] w-16 shrink-0 truncate">
                     {s.name}
                   </span>
                   <div className="flex-1 h-3.5 bg-[rgba(var(--ui-fg),0.03)] rounded-full overflow-hidden">
@@ -725,7 +720,7 @@ const OverviewTab: React.FC<{
                       }}
                     />
                   </div>
-                  <span className="text-[10px] font-mono tabular-nums text-[rgba(var(--ui-fg),0.4)] w-10 text-right shrink-0">
+                  <span className="text-[14px] font-mono tabular-nums text-[rgba(var(--ui-fg),0.4)] w-10 text-right shrink-0">
                     {s.pct.toFixed(0)}%
                   </span>
                 </div>
@@ -747,10 +742,10 @@ const ChartCard: React.FC<{
 }> = ({ label, id, children }) => (
   <div
     id={id}
-    className="chart-draw-in bg-[rgba(var(--ui-fg),0.02)] border border-[rgba(var(--ui-fg),0.05)] rounded-xl scroll-mt-20"
+    className="chart-draw-in bg-[rgba(var(--ui-fg),0.02)] border border-[rgba(var(--ui-fg),0.05)] rounded-xl scroll-mt-20 overflow-hidden"
     style={{ padding: "16px" }}
   >
-    <span className="text-[10px] font-semibold tracking-[1px] uppercase text-[rgba(var(--ui-fg),0.3)] block mb-3">
+    <span className="text-[14px] font-semibold tracking-[1px] uppercase text-[rgba(var(--ui-fg),0.3)] block mb-3">
       {label}
     </span>
     {children}
@@ -763,7 +758,7 @@ const DestinationsTab: React.FC<{ destinations: DestinationRecord[] }> = ({ dest
   if (destinations.length === 0) {
     return (
       <div className="flex items-center justify-center h-40">
-        <span className="text-[11px] text-[rgba(var(--ui-fg),0.3)]">No destination data</span>
+        <span className="text-[13px] text-[rgba(var(--ui-fg),0.3)]">No destination data</span>
       </div>
     );
   }
@@ -774,7 +769,7 @@ const DestinationsTab: React.FC<{ destinations: DestinationRecord[] }> = ({ dest
     <div className="flex flex-col gap-1">
       {/* Header */}
       <div
-        className="grid grid-cols-[1fr_80px_60px_80px] text-[9px] font-semibold tracking-[1px] uppercase text-[rgba(var(--ui-fg),0.25)]"
+        className="grid grid-cols-[1fr_80px_60px_80px] text-[13px] font-semibold tracking-[1px] uppercase text-[rgba(var(--ui-fg),0.25)]"
         style={{ padding: "6px 14px" }}
       >
         <span>Destination</span>
@@ -797,21 +792,21 @@ const DestinationsTab: React.FC<{ destinations: DestinationRecord[] }> = ({ dest
             }}
           />
           <div className="flex flex-col gap-0.5 min-w-0 relative">
-            <span className="text-[11px] font-medium text-[rgba(var(--ui-fg),0.7)] truncate font-mono">
+            <span className="text-[13px] font-medium text-[rgba(var(--ui-fg),0.7)] truncate font-mono">
               {dest.ip}
             </span>
-            <span className="text-[10px] text-[rgba(var(--ui-fg),0.3)] truncate">
+            <span className="text-[14px] text-[rgba(var(--ui-fg),0.3)] truncate">
               {[dest.city, dest.country].filter(Boolean).join(", ") || "—"}
               {dest.org && ` · ${dest.org}`}
             </span>
           </div>
-          <span className="text-[11px] font-mono tabular-nums text-[rgba(var(--ui-fg),0.5)] text-right relative">
+          <span className="text-[13px] font-mono tabular-nums text-[rgba(var(--ui-fg),0.5)] text-right relative">
             {formatDataSize(dest.totalBytes)}
           </span>
-          <span className="text-[11px] font-mono tabular-nums text-[rgba(var(--ui-fg),0.4)] text-right relative">
+          <span className="text-[13px] font-mono tabular-nums text-[rgba(var(--ui-fg),0.4)] text-right relative">
             {dest.connectionCount}
           </span>
-          <span className="text-[10px] text-[rgba(var(--ui-fg),0.35)] text-right relative">
+          <span className="text-[14px] text-[rgba(var(--ui-fg),0.35)] text-right relative">
             {dest.primaryService || "—"}
           </span>
         </div>
@@ -918,7 +913,7 @@ const ProcessesTab: React.FC<{ processes: ProcessUsageRecord[] }> = ({ processes
   if (aggregated.length === 0) {
     return (
       <div className="flex items-center justify-center h-40">
-        <span className="text-[11px] text-[rgba(var(--ui-fg),0.3)]">No process data recorded</span>
+        <span className="text-[13px] text-[rgba(var(--ui-fg),0.3)]">No process data recorded</span>
       </div>
     );
   }
@@ -934,8 +929,32 @@ const ProcessesTab: React.FC<{ processes: ProcessUsageRecord[] }> = ({ processes
             data={processTimeline.data}
             series={processTimeline.series}
             height={180}
+            noLegend
             yFormat={(v) => (v >= 1024 ? `${(v / 1024).toFixed(1)} GB` : `${v.toFixed(0)} MB`)}
           />
+          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 px-1 pb-1">
+            {processTimeline.series.map((s) => {
+              const hex: Record<string, string> = {
+                cyan: "#00d4f5",
+                orange: "#ff7a45",
+                purple: "#b06cff",
+                green: "#2dd4a8",
+                amber: "#ffb020",
+              };
+              return (
+                <span
+                  key={s.label}
+                  className="flex items-center gap-1.5 text-[13px] text-[rgba(var(--ui-fg),0.4)]"
+                >
+                  <span
+                    className="inline-block w-2 h-2 rounded-full"
+                    style={{ backgroundColor: hex[s.color] ?? s.color }}
+                  />
+                  {s.label}
+                </span>
+              );
+            })}
+          </div>
         </ChartCard>
       )}
 
@@ -943,7 +962,7 @@ const ProcessesTab: React.FC<{ processes: ProcessUsageRecord[] }> = ({ processes
       <div className="flex flex-col gap-1">
         {/* Header */}
         <div
-          className="grid grid-cols-[1fr_80px_80px_60px_60px] text-[9px] font-semibold tracking-[1px] uppercase text-[rgba(var(--ui-fg),0.25)]"
+          className="grid grid-cols-[1fr_80px_80px_60px_60px] text-[13px] font-semibold tracking-[1px] uppercase text-[rgba(var(--ui-fg),0.25)]"
           style={{ padding: "6px 14px" }}
         >
           <span>Process</span>
@@ -966,19 +985,19 @@ const ProcessesTab: React.FC<{ processes: ProcessUsageRecord[] }> = ({ processes
                 width: `${(proc.totalBytes / maxBytes) * 100}%`,
               }}
             />
-            <span className="text-[11px] font-medium text-[rgba(var(--ui-fg),0.7)] truncate relative">
+            <span className="text-[13px] font-medium text-[rgba(var(--ui-fg),0.7)] truncate relative">
               {proc.name}
             </span>
-            <span className="text-[11px] font-mono tabular-nums text-(--accent-orange) text-right relative">
+            <span className="text-[13px] font-mono tabular-nums text-(--accent-orange) text-right relative">
               {formatDataSize(proc.bytesUp)}
             </span>
-            <span className="text-[11px] font-mono tabular-nums text-(--accent-cyan) text-right relative">
+            <span className="text-[13px] font-mono tabular-nums text-(--accent-cyan) text-right relative">
               {formatDataSize(proc.bytesDown)}
             </span>
-            <span className="text-[11px] font-mono tabular-nums text-[rgba(var(--ui-fg),0.4)] text-right relative">
+            <span className="text-[13px] font-mono tabular-nums text-[rgba(var(--ui-fg),0.4)] text-right relative">
               {proc.flowCount}
             </span>
-            <span className="text-[11px] font-mono tabular-nums text-[rgba(var(--ui-fg),0.4)] text-right relative">
+            <span className="text-[13px] font-mono tabular-nums text-[rgba(var(--ui-fg),0.4)] text-right relative">
               {Number.isFinite(proc.avgRtt) ? proc.avgRtt.toFixed(0) : "—"}ms
             </span>
           </div>
@@ -988,83 +1007,11 @@ const ProcessesTab: React.FC<{ processes: ProcessUsageRecord[] }> = ({ processes
   );
 };
 
-// ─── Section Navigation TOC ──────────────────────────────────────────────────
-
-const TOC_SECTIONS = [
-  { id: "section-throughput", label: "Throughput" },
-  { id: "section-latency", label: "Latency" },
-  { id: "section-flows", label: "Flows" },
-  { id: "section-protocols", label: "Protocols" },
-] as const;
-
-const SectionToc: React.FC<{
-  hasInsights: boolean;
-  hasAnomalies: boolean;
-}> = ({ hasInsights, hasAnomalies }) => {
-  const [activeId, setActiveId] = useState<string>("");
-
-  const sections = useMemo(() => {
-    const list = [...TOC_SECTIONS] as { id: string; label: string }[];
-    if (hasInsights) list.push({ id: "section-insights", label: "Insights" });
-    if (hasAnomalies) list.push({ id: "section-anomalies", label: "Anomalies" });
-    list.push({ id: "section-tags", label: "Tags" });
-    return list;
-  }, [hasInsights, hasAnomalies]);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        // Find the first section currently intersecting
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setActiveId(entry.target.id);
-            break;
-          }
-        }
-      },
-      { rootMargin: "-80px 0px -60% 0px", threshold: 0.1 }
-    );
-
-    for (const s of sections) {
-      const el = document.getElementById(s.id);
-      if (el) observer.observe(el);
-    }
-    return () => observer.disconnect();
-  }, [sections]);
-
-  const handleClick = (id: string) => {
-    const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
-  return (
-    <nav
-      aria-label="Section navigation"
-      className="fixed right-6 top-1/2 -translate-y-1/2 z-10 hidden xl:flex flex-col gap-1 py-2 px-1.5 rounded-xl bg-[rgba(var(--ui-bg),0.6)] backdrop-blur-md border border-[rgba(var(--ui-fg),0.06)]"
-    >
-      {sections.map((s) => (
-        <button
-          key={s.id}
-          onClick={() => handleClick(s.id)}
-          className={`text-[9px] font-medium px-2 py-1 rounded-md text-left transition-colors whitespace-nowrap ${
-            activeId === s.id
-              ? "text-(--accent-cyan) bg-(--accent-cyan)/10"
-              : "text-[rgba(var(--ui-fg),0.3)] hover:text-[rgba(var(--ui-fg),0.6)] hover:bg-[rgba(var(--ui-fg),0.04)]"
-          }`}
-          title={s.label}
-        >
-          {s.label}
-        </button>
-      ))}
-    </nav>
-  );
-};
-
 // ─── Insights Panel ──────────────────────────────────────────────────────────
 
 const InsightsPanel: React.FC<{ insights: SessionInsights }> = ({ insights }) => (
   <div id="section-insights" className="mt-6 scroll-mt-20">
-    <h3 className="text-[13px] font-medium text-[rgba(var(--ui-fg),0.6)] mb-3">Session Insights</h3>
+    <h3 className="text-[15px] font-medium text-[rgba(var(--ui-fg),0.6)] mb-3">Session Insights</h3>
     <div
       className="rounded-xl border border-[rgba(var(--ui-fg),0.06)] bg-[rgba(var(--ui-fg),0.02)] space-y-3"
       style={{ padding: "16px 18px" }}
@@ -1137,7 +1084,7 @@ const InsightRow: React.FC<{
   tip?: string;
 }> = ({ label, value, warn, tip }) => (
   <div className="flex items-start justify-between gap-4">
-    <span className="text-[11px] text-[rgba(var(--ui-fg),0.35)] shrink-0 flex items-center gap-1">
+    <span className="text-[13px] text-[rgba(var(--ui-fg),0.35)] shrink-0 flex items-center gap-1">
       {label}
       {tip && (
         <Tooltip>
@@ -1147,14 +1094,14 @@ const InsightRow: React.FC<{
               className="text-[rgba(var(--ui-fg),0.2)] hover:text-[rgba(var(--ui-fg),0.4)] cursor-help transition-colors"
             />
           </TooltipTrigger>
-          <TooltipContent side="top" className="max-w-52 text-[10px]">
+          <TooltipContent side="top" className="max-w-52 text-[14px]">
             {tip}
           </TooltipContent>
         </Tooltip>
       )}
     </span>
     <span
-      className={`text-[11px] font-mono text-right truncate ${
+      className={`text-[13px] font-mono text-right truncate ${
         warn ? "text-(--accent-amber)" : "text-[rgba(var(--ui-fg),0.6)]"
       }`}
     >
@@ -1179,7 +1126,7 @@ const AnomalyPanel: React.FC<{ anomalies: Anomaly[] }> = ({ anomalies }) => (
   >
     <div className="flex items-center gap-1.5 mb-3">
       <AlertTriangle size={13} className="text-(--accent-amber)" />
-      <span className="text-[11px] font-semibold tracking-[1px] uppercase text-[rgba(var(--ui-fg),0.4)]">
+      <span className="text-[13px] font-semibold tracking-[1px] uppercase text-[rgba(var(--ui-fg),0.4)]">
         Anomalies ({anomalies.length})
       </span>
     </div>
@@ -1197,16 +1144,16 @@ const AnomalyPanel: React.FC<{ anomalies: Anomaly[] }> = ({ anomalies }) => (
             }}
           />
           <div className="flex flex-col gap-0.5 min-w-0">
-            <span className="text-[11px] font-semibold text-[rgba(var(--ui-fg),0.75)]">
+            <span className="text-[13px] font-semibold text-[rgba(var(--ui-fg),0.75)]">
               {a.anomalyType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-              <span className="ml-1.5 text-[10px] font-normal text-[rgba(var(--ui-fg),0.35)]">
+              <span className="ml-1.5 text-[14px] font-normal text-[rgba(var(--ui-fg),0.35)]">
                 {a.severity}
                 {Number.isFinite(a.deviationSigmas) && a.deviationSigmas > 0
                   ? ` · ${a.deviationSigmas.toFixed(1)}σ`
                   : ""}
               </span>
             </span>
-            <span className="text-[11px] text-[rgba(var(--ui-fg),0.5)] truncate">{a.message}</span>
+            <span className="text-[13px] text-[rgba(var(--ui-fg),0.5)] truncate">{a.message}</span>
           </div>
         </div>
       ))}
@@ -1239,7 +1186,7 @@ const TagsEditor: React.FC<{
     >
       <div className="flex items-center gap-1.5 mb-3">
         <Tag size={13} className="text-[rgba(var(--ui-fg),0.4)]" />
-        <span className="text-[11px] font-semibold tracking-[1px] uppercase text-[rgba(var(--ui-fg),0.4)]">
+        <span className="text-[13px] font-semibold tracking-[1px] uppercase text-[rgba(var(--ui-fg),0.4)]">
           Tags
         </span>
       </div>
@@ -1248,7 +1195,7 @@ const TagsEditor: React.FC<{
           <span
             key={tag}
             style={{ padding: "3px 8px" }}
-            className="inline-flex items-center gap-1 bg-[rgba(var(--ui-fg),0.06)] rounded-md text-[11px] font-medium text-[rgba(var(--ui-fg),0.7)]"
+            className="inline-flex items-center gap-1 bg-[rgba(var(--ui-fg),0.06)] rounded-md text-[13px] font-medium text-[rgba(var(--ui-fg),0.7)]"
           >
             {tag}
             <button
@@ -1267,7 +1214,7 @@ const TagsEditor: React.FC<{
             onKeyDown={handleKeyDown}
             placeholder="Add tag..."
             maxLength={TAG_MAX}
-            className="text-[11px] bg-transparent border-none outline-none text-[rgba(var(--ui-fg),0.6)] placeholder:text-[rgba(var(--ui-fg),0.2)]"
+            className="text-[13px] bg-transparent border-none outline-none text-[rgba(var(--ui-fg),0.6)] placeholder:text-[rgba(var(--ui-fg),0.2)]"
             style={{
               padding: "3px 4px",
               width: `${Math.min(Math.max(tagInput.length * 7 + 60, 80), 200)}px`,
@@ -1276,7 +1223,7 @@ const TagsEditor: React.FC<{
           />
           {tagInput.length > 0 && (
             <span
-              className={`text-[9px] font-mono tabular-nums ${tagInput.length >= TAG_MAX ? "text-(--accent-red)" : "text-[rgba(var(--ui-fg),0.2)]"}`}
+              className={`text-[13px] font-mono tabular-nums ${tagInput.length >= TAG_MAX ? "text-(--accent-red)" : "text-[rgba(var(--ui-fg),0.2)]"}`}
             >
               {tagInput.length}/{TAG_MAX}
             </span>

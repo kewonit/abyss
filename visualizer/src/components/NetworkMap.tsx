@@ -20,11 +20,16 @@ interface CableActivity {
   throughput: number;
   opacity: number;
   targetOpacity: number;
+  /** Birth timestamp for smooth warm-up animation */
+  createdAt: number;
 }
 
-const FADE_OUT_DURATION = 12000;
-const FADE_START_DELAY = 8000;
-const MIN_OPACITY = 0.05;
+// Faster fade-out: hold for 4s then exponential decay over 6s
+const FADE_OUT_DURATION = 6000;
+const FADE_START_DELAY = 4000;
+const MIN_OPACITY = 0.03;
+/** Warm-up ramp duration in ms — cables fade in over 600ms for smooth appearance */
+const WARM_UP_MS = 600;
 
 /** Theme-aware colors for canvas rendering. */
 function getCanvasTheme(): {
@@ -250,6 +255,9 @@ export const NetworkMap = () => {
   const lastMatchRef = useRef(0);
   const lastHitTestRef = useRef(0);
 
+  /** Track last playback position to detect seeks and reset cable state. */
+  const lastPlaybackPosRef = useRef(-1);
+
   // Flow persistence — keep recent flows visible for a few seconds
   const flowBufferRef = useRef<Map<string, { flow: GeoFlow; expiresAt: number }>>(new Map());
   const FLOW_PERSIST_MS = 10_000; // keep dots visible 10s after last seen
@@ -313,8 +321,9 @@ export const NetworkMap = () => {
         activity.set(cableId, {
           lastSeen: now,
           throughput: bps,
-          opacity: 0.1,
+          opacity: 0.05, // Start near-zero for smooth warm-up
           targetOpacity: 1,
+          createdAt: performance.now(),
         });
       }
     }
@@ -324,7 +333,9 @@ export const NetworkMap = () => {
       if (!throughput.has(cableId)) {
         const age = now - state.lastSeen;
         if (age > FADE_START_DELAY) {
-          state.targetOpacity = 1 - Math.min(1, (age - FADE_START_DELAY) / FADE_OUT_DURATION);
+          // Exponential decay instead of linear — fast initial fade then slow tail
+          const t = (age - FADE_START_DELAY) / FADE_OUT_DURATION;
+          state.targetOpacity = Math.exp(-3 * t); // e^(-3t): ~0.05 at t=1
         }
         if (state.opacity < MIN_OPACITY && state.targetOpacity < MIN_OPACITY) {
           toRemove.push(cableId);
@@ -444,7 +455,7 @@ export const NetworkMap = () => {
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
 
-      // Per-frame projection cache — traceCable is called 3× per active cable
+      // Per-frame projection cache — traceCable is called multiple times per active cable
       const projCache: ProjectionCache = new Map();
 
       for (const f of cables.features) {
@@ -456,37 +467,71 @@ export const NetworkMap = () => {
         const bps = throughput.get(featureId) ?? state.throughput;
         const color = getActivityColor(bps);
         const [r, g, b] = hexRgb(color);
-        const baseOpacity = state.opacity;
+
+        // Warm-up ramp — new cables fade in smoothly over WARM_UP_MS
+        const age = ts - state.createdAt;
+        const warmupFactor = Math.min(1, age / WARM_UP_MS);
+        const baseOpacity = state.opacity * warmupFactor;
+
+        // Subtle sine-wave oscillation (±5%) to simulate data flow variability
+        const oscillation = 1 + Math.sin(ts * 0.003 + featureId.charCodeAt(0)) * 0.05;
+        const finalOpacity = baseOpacity * oscillation;
+
+        if (finalOpacity < MIN_OPACITY) continue;
+
+        // == Layer 1: Outer glow — throughput-proportional width (3-8px) ==
+        const kbps = bps / 1000;
+        const glowWidth = Math.min(8, 3 + (kbps / 2000) * 5);
 
         ctx.beginPath();
         const hasVisible = traceCable(ctx, map, f, cLng, cLat, 1, projCache);
         if (!hasVisible) continue;
 
-        ctx.strokeStyle = `rgba(${r},${g},${b},${0.08 * baseOpacity})`;
-        ctx.lineWidth = 6;
+        ctx.strokeStyle = `rgba(${r},${g},${b},${0.06 * finalOpacity})`;
+        ctx.lineWidth = glowWidth;
         ctx.setLineDash([]);
         ctx.stroke();
 
+        // == Layer 2: Core line — steady, slightly brighter ==
         ctx.beginPath();
         traceCable(ctx, map, f, cLng, cLat, 1, projCache);
-        ctx.strokeStyle = `rgba(${r},${g},${b},${0.6 * baseOpacity})`;
-        ctx.lineWidth = 1.3;
+        ctx.strokeStyle = `rgba(${r},${g},${b},${0.55 * finalOpacity})`;
+        ctx.lineWidth = 1.2;
         ctx.setLineDash([]);
         ctx.stroke();
 
-        const speedFactor = Math.min(2, 1 + bps / 1_000_000);
-        const dashLen = 5,
-          gapLen = 16;
-        const offset = (ts * 0.04 * speedFactor) % (dashLen + gapLen);
+        // == Layer 3: Directional data particles ==
+        // Speed scales with throughput: faster data = faster particles
+        const speedFactor = Math.min(3, 0.8 + kbps / 500);
+        const dashLen = 3;
+        const gapLen = Math.max(10, 22 - kbps / 200); // Denser packets at higher throughput
+        const offset = (ts * 0.05 * speedFactor) % (dashLen + gapLen);
 
         ctx.beginPath();
         traceCable(ctx, map, f, cLng, cLat, 1, projCache);
         ctx.setLineDash([dashLen, gapLen]);
-        ctx.lineDashOffset = -offset;
-        ctx.strokeStyle = `rgba(${Math.min(255, r + 40)},${Math.min(255, g + 40)},${Math.min(255, b + 40)},${0.4 * baseOpacity})`;
-        ctx.lineWidth = 1.4;
+        ctx.lineDashOffset = -offset; // Negative = flow away from source (data traveling toward destination)
+        ctx.strokeStyle = `rgba(${Math.min(255, r + 50)},${Math.min(255, g + 50)},${Math.min(255, b + 50)},${0.45 * finalOpacity})`;
+        ctx.lineWidth = 1.3;
         ctx.stroke();
         ctx.setLineDash([]);
+
+        // == Layer 4: Secondary particles (opposite direction for bidirectional feel) ==
+        // Only show for higher throughput cables to add depth
+        if (kbps > 200) {
+          const secondarySpeed = speedFactor * 0.6;
+          const secondaryOffset =
+            (ts * 0.05 * secondarySpeed + dashLen + gapLen / 2) % (dashLen + gapLen);
+
+          ctx.beginPath();
+          traceCable(ctx, map, f, cLng, cLat, 1, projCache);
+          ctx.setLineDash([2, gapLen + 6]);
+          ctx.lineDashOffset = secondaryOffset; // Positive = reverse direction
+          ctx.strokeStyle = `rgba(${r},${g},${b},${0.15 * finalOpacity})`;
+          ctx.lineWidth = 0.8;
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
       }
     },
     [updateOpacities]
@@ -689,6 +734,25 @@ export const NetworkMap = () => {
     }
 
     const now = performance.now();
+
+    // Detect playback seek — if position jumped by more than ±1, reset cable
+    // activity to prevent stale cables glowing from previous frames.
+    const pb = useTelemetryStore.getState().playback;
+    if (pb.active) {
+      const lastPos = lastPlaybackPosRef.current;
+      const curPos = pb.position;
+      if (lastPos >= 0 && Math.abs(curPos - lastPos) > 1) {
+        // User scrubbed — clear accumulated cable activity for a fresh start
+        cableActivityRef.current.clear();
+        cableThroughputRef.current.clear();
+        perFlowCablesRef.current.clear();
+        flowBufferRef.current.clear();
+      }
+      lastPlaybackPosRef.current = curPos;
+    } else {
+      lastPlaybackPosRef.current = -1;
+    }
+
     if (now - lastMatchRef.current >= 500) {
       lastMatchRef.current = now;
       updateActive(flows, now);
@@ -786,19 +850,19 @@ export const NetworkMap = () => {
             <div className="w-24 h-1 rounded-full bg-[rgba(var(--ui-fg),0.06)] overflow-hidden">
               <div className="h-full w-1/3 rounded-full bg-[rgba(var(--ui-fg),0.12)] animate-[shimmer_1.5s_ease-in-out_infinite]" />
             </div>
-            <span className="text-[10px] text-[rgba(var(--ui-fg),0.25)]">Loading map…</span>
+            <span className="text-[14px] text-[rgba(var(--ui-fg),0.25)]">Loading map…</span>
           </div>
         </div>
       )}
 
-      {/* Empty state */}
-      {flows.length === 0 && (
+      {/* Empty state — only in live mode when truly idle */}
+      {flows.length === 0 && !useTelemetryStore.getState().playback.active && (
         <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
           <div className="bg-(--pill-bg) backdrop-blur-xl border border-(--pill-border) rounded-lg px-4 py-3 text-center">
-            <div className="text-[12px] text-[rgba(var(--ui-fg),0.35)] font-medium">
+            <div className="text-[14px] text-[rgba(var(--ui-fg),0.35)] font-medium">
               Waiting for network activity…
             </div>
-            <div className="text-[10px] text-[rgba(var(--ui-fg),0.2)] mt-1">
+            <div className="text-[14px] text-[rgba(var(--ui-fg),0.2)] mt-1">
               Flows will appear on the map automatically
             </div>
           </div>
@@ -816,15 +880,15 @@ export const NetworkMap = () => {
             maxWidth: 220,
           }}
         >
-          <div className="text-[11px] font-semibold text-[rgba(var(--ui-fg),0.85)] truncate">
+          <div className="text-[13px] font-semibold text-[rgba(var(--ui-fg),0.85)] truncate">
             {tooltip.city || tooltip.ip}
           </div>
           {tooltip.city && (
-            <div className="text-[10px] text-[rgba(var(--ui-fg),0.4)] font-mono truncate">
+            <div className="text-[14px] text-[rgba(var(--ui-fg),0.4)] font-mono truncate">
               {tooltip.ip}
             </div>
           )}
-          <div className="flex items-center gap-3 mt-1.5 text-[10px] font-mono tabular-nums">
+          <div className="flex items-center gap-3 mt-1.5 text-[14px] font-mono tabular-nums">
             <span className="text-(--accent-cyan)">{formatDataRate(tooltip.bps)}</span>
             <span className="text-[rgba(var(--ui-fg),0.4)]">{tooltip.rtt.toFixed(0)}ms</span>
             {tooltip.service && (
@@ -832,7 +896,7 @@ export const NetworkMap = () => {
             )}
           </div>
           {tooltip.country && (
-            <div className="text-[10px] text-[rgba(var(--ui-fg),0.3)] mt-0.5">
+            <div className="text-[14px] text-[rgba(var(--ui-fg),0.3)] mt-0.5">
               {tooltip.country} · {tooltip.dir}
             </div>
           )}

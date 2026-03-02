@@ -46,13 +46,13 @@ export class ErrorBoundary extends React.Component<Props, State> {
             <h2 className="text-[16px] font-semibold text-[rgba(var(--ui-fg),0.85)]">
               Something went wrong
             </h2>
-            <p className="text-[13px] text-[rgba(var(--ui-fg),0.45)] leading-relaxed">
+            <p className="text-[15px] text-[rgba(var(--ui-fg),0.45)] leading-relaxed">
               An unexpected error occurred in the application. You can try reloading or dismissing
               this error.
             </p>
             {this.state.error && (
               <pre
-                className="w-full text-left text-[11px] font-mono text-[var(--accent-red)] bg-[rgba(var(--ui-fg),0.03)] border border-[rgba(var(--ui-fg),0.06)] rounded-lg overflow-auto max-h-32"
+                className="w-full text-left text-[13px] font-mono text-[var(--accent-red)] bg-[rgba(var(--ui-fg),0.03)] border border-[rgba(var(--ui-fg),0.06)] rounded-lg overflow-auto max-h-32"
                 style={{ padding: "12px" }}
               >
                 {this.state.error.message}

@@ -1,12 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import {
-  ArrowLeft,
-  ArrowUpDown,
-  ArrowLeftRight,
-  TrendingUp,
-  TrendingDown,
-  Minus,
-} from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { useTelemetryStore } from "../telemetry/store";
 import {
   getSession,
@@ -91,7 +84,6 @@ export const SessionComparison: React.FC = () => {
     };
   }, [comparisonIds]);
 
-  // Escape goes back
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.code === "Escape") {
@@ -144,7 +136,7 @@ export const SessionComparison: React.FC = () => {
   if (error || !dataA || !dataB) {
     return (
       <div className="flex items-center justify-center w-full h-full bg-[rgba(var(--ui-bg),0.95)]">
-        <span className="text-[13px] text-(--accent-red)">{error || "Missing session data"}</span>
+        <span className="text-[15px] text-(--accent-red)">{error || "Missing session data"}</span>
       </div>
     );
   }
@@ -152,51 +144,49 @@ export const SessionComparison: React.FC = () => {
   return (
     <div className="w-full h-full bg-[rgba(var(--ui-bg),0.95)] overflow-y-auto">
       <div className="max-w-5xl mx-auto" style={{ padding: "96px 48px 56px" }}>
-        {/* Header */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="gap-1.5 text-[12px] text-[rgba(var(--ui-fg),0.4)] hover:text-[rgba(var(--ui-fg),0.7)] mb-4"
-          onClick={() => setView("analytics")}
-        >
-          <ArrowLeft size={13} />
-          <span>Back to analytics</span>
-        </Button>
-
-        <div className="flex items-center gap-3 mb-6">
-          <h1
-            className="text-[18px] font-semibold text-[rgba(var(--ui-fg),0.85)] flex items-center gap-2"
-            style={{ letterSpacing: "-0.3px" }}
+        <div className="flex items-center justify-between mb-10">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-2 text-[14px] text-[rgba(var(--ui-fg),0.35)] hover:text-[rgba(var(--ui-fg),0.7)] -ml-2"
+            onClick={() => setView("analytics")}
           >
-            <ArrowUpDown size={18} className="text-(--accent-purple)" />
-            Session Comparison
-          </h1>
+            <ArrowLeft size={14} />
+            Back to analytics
+          </Button>
+
           {comparisonIds && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1.5 text-[11px] text-[rgba(var(--ui-fg),0.4)] hover:text-[rgba(var(--ui-fg),0.7)]"
+            <button
+              className="flex items-center gap-1.5 text-[13px] text-[rgba(var(--ui-fg),0.3)] hover:text-[rgba(var(--ui-fg),0.6)] transition-colors cursor-pointer"
               onClick={() => startComparison(comparisonIds[1], comparisonIds[0])}
             >
               <ArrowLeftRight size={12} />
-              Swap A/B
-            </Button>
+              Swap
+            </button>
           )}
         </div>
 
-        {/* Side-by-side summary cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-          <SessionCard session={dataA.info} label="Session A" color="var(--accent-cyan)" />
-          <SessionCard session={dataB.info} label="Session B" color="var(--accent-orange)" />
+        <div className="mb-10">
+          <h1
+            className="text-[22px] font-semibold text-[rgba(var(--ui-fg),0.88)]"
+            style={{ letterSpacing: "-0.5px" }}
+          >
+            Comparison
+          </h1>
+          <p className="text-[14px] text-[rgba(var(--ui-fg),0.3)] mt-1">
+            {dataA.info.name || "Unnamed"} vs {dataB.info.name || "Unnamed"}
+          </p>
         </div>
 
-        {/* Comparison summary */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-10">
+          <SessionCard session={dataA.info} label="A" />
+          <SessionCard session={dataB.info} label="B" />
+        </div>
+
         <ComparisonSummary a={dataA} b={dataB} />
 
-        {/* Throughput overlay chart */}
         <ThroughputComparison a={dataA} b={dataB} />
 
-        {/* Destination diff */}
         <DestinationDiff a={dataA} b={dataB} />
       </div>
     </div>
@@ -208,45 +198,47 @@ export const SessionComparison: React.FC = () => {
 const SessionCard: React.FC<{
   session: SessionInfo;
   label: string;
-  color: string;
-}> = ({ session, label, color }) => {
+}> = ({ session, label }) => {
   const totalBytes = safeSum(session.totalBytesUp, session.totalBytesDown);
 
   return (
-    <div
-      className="rounded-xl border bg-[rgba(var(--ui-fg),0.02)]"
-      style={{
-        padding: "16px 18px",
-        borderColor: `color-mix(in srgb, ${color}, transparent 70%)`,
-      }}
-    >
-      <div className="text-[10px] uppercase tracking-wider font-semibold mb-2" style={{ color }}>
-        {label}
-      </div>
-      <div className="text-[14px] font-medium text-[rgba(var(--ui-fg),0.75)] mb-1">
+    <div className="rounded-lg border border-[rgba(var(--ui-fg),0.05)] bg-[rgba(var(--ui-fg),0.015)] p-5">
+      <div className="text-[13px] text-[rgba(var(--ui-fg),0.25)] mb-2">{label}</div>
+      <div className="text-[16px] font-medium text-[rgba(var(--ui-fg),0.7)] mb-0.5">
         {session.name || "Unnamed Session"}
       </div>
-      <div className="text-[11px] text-[rgba(var(--ui-fg),0.35)] mb-3">
+      <div className="text-[13px] text-[rgba(var(--ui-fg),0.3)] mb-4 font-mono tabular-nums">
         {formatTimestamp(session.startedAt)} · {formatDuration(session.durationSecs)}
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <MiniMetric label="Total Data" value={formatDataSize(totalBytes)} />
-        <MiniMetric label="Peak" value={formatCompact(session.peakBps * 8, "bps")} />
-        <MiniMetric label="Avg Latency" value={`${(session.avgLatencyMs || 0).toFixed(0)}ms`} />
-        <MiniMetric label="Flows" value={String(session.totalFlows || 0)} />
+      <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+        <div>
+          <div className="text-[rgba(var(--ui-fg),0.2)] text-[11px] mb-0.5">Data</div>
+          <div className="text-[14px] text-[rgba(var(--ui-fg),0.55)] font-mono tabular-nums">
+            {formatDataSize(totalBytes)}
+          </div>
+        </div>
+        <div>
+          <div className="text-[rgba(var(--ui-fg),0.2)] text-[11px] mb-0.5">Peak</div>
+          <div className="text-[14px] text-[rgba(var(--ui-fg),0.55)] font-mono tabular-nums">
+            {formatCompact(session.peakBps * 8, "bps")}
+          </div>
+        </div>
+        <div>
+          <div className="text-[rgba(var(--ui-fg),0.2)] text-[11px] mb-0.5">Latency</div>
+          <div className="text-[14px] text-[rgba(var(--ui-fg),0.55)] font-mono tabular-nums">
+            {(session.avgLatencyMs || 0).toFixed(0)}ms
+          </div>
+        </div>
+        <div>
+          <div className="text-[rgba(var(--ui-fg),0.2)] text-[11px] mb-0.5">Flows</div>
+          <div className="text-[14px] text-[rgba(var(--ui-fg),0.55)] font-mono tabular-nums">
+            {(session.totalFlows || 0).toLocaleString()}
+          </div>
+        </div>
       </div>
     </div>
   );
 };
-
-const MiniMetric: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <div>
-    <div className="text-[9px] text-[rgba(var(--ui-fg),0.25)] uppercase tracking-wider">
-      {label}
-    </div>
-    <div className="text-[12px] text-[rgba(var(--ui-fg),0.6)] font-mono">{value}</div>
-  </div>
-);
 
 // ─── Comparison Summary ─────────────────────────────────────────────────────
 
@@ -294,29 +286,28 @@ const ComparisonSummary: React.FC<{ a: SessionData; b: SessionData }> = ({ a, b 
   ];
 
   return (
-    <div className="mb-8">
-      <SectionHeader title="Metric Comparison" />
-      <div className="rounded-xl border border-[rgba(var(--ui-fg),0.06)] overflow-hidden">
-        {/* Header row */}
-        <div
-          className="grid grid-cols-4 text-[10px] uppercase tracking-wider text-[rgba(var(--ui-fg),0.3)] border-b border-[rgba(var(--ui-fg),0.04)]"
-          style={{ padding: "8px 14px" }}
-        >
-          <span>Metric</span>
-          <span className="text-center">Session A</span>
-          <span className="text-center">Session B</span>
-          <span className="text-right">Difference</span>
+    <div className="mb-10">
+      <SectionLabel>Metrics</SectionLabel>
+      <div className="space-y-0">
+        <div className="grid grid-cols-4 text-[13px] text-[rgba(var(--ui-fg),0.2)] pb-2 px-1">
+          <span />
+          <span className="text-center">A</span>
+          <span className="text-center">B</span>
+          <span className="text-right">Delta</span>
         </div>
         {rows.map((r) => (
           <div
             key={r.label}
-            className="grid grid-cols-4 text-[12px] border-b border-[rgba(var(--ui-fg),0.03)] last:border-b-0 transition-colors duration-100 hover:bg-[rgba(var(--ui-fg),0.03)]"
-            style={{ padding: "8px 14px" }}
+            className="grid grid-cols-4 items-center text-[14px] py-2.5 px-1 border-t border-[rgba(var(--ui-fg),0.03)] hover:bg-[rgba(var(--ui-fg),0.015)] transition-colors duration-100"
           >
-            <span className="text-[rgba(var(--ui-fg),0.5)]">{r.label}</span>
-            <span className="text-center font-mono text-[rgba(var(--ui-fg),0.6)]">{r.valA}</span>
-            <span className="text-center font-mono text-[rgba(var(--ui-fg),0.6)]">{r.valB}</span>
-            <span className="text-right flex items-center justify-end gap-1">
+            <span className="text-[rgba(var(--ui-fg),0.45)]">{r.label}</span>
+            <span className="text-center font-mono tabular-nums text-[rgba(var(--ui-fg),0.55)]">
+              {r.valA}
+            </span>
+            <span className="text-center font-mono tabular-nums text-[rgba(var(--ui-fg),0.55)]">
+              {r.valB}
+            </span>
+            <span className="flex items-center justify-end">
               <DiffBadge diff={r.diff} />
             </span>
           </div>
@@ -329,27 +320,26 @@ const ComparisonSummary: React.FC<{ a: SessionData; b: SessionData }> = ({ a, b 
 const DiffBadge: React.FC<{ diff: number }> = ({ diff }) => {
   if (!Number.isFinite(diff)) {
     return (
-      <span className="flex items-center gap-0.5 text-[11px] text-[rgba(var(--ui-fg),0.4)] font-mono">
-        N/A
+      <span className="text-[13px] text-[rgba(var(--ui-fg),0.2)] font-mono tabular-nums">
+        \u2014
       </span>
     );
   }
   if (Math.abs(diff) < 0.5) {
     return (
-      <span className="flex items-center gap-0.5 text-[11px] text-[rgba(var(--ui-fg),0.3)]">
+      <span className="flex items-center gap-0.5 text-[13px] text-[rgba(var(--ui-fg),0.25)] font-mono tabular-nums">
         <Minus size={10} />
-        ~0%
+        0%
       </span>
     );
   }
 
   const isUp = diff > 0;
   const Icon = isUp ? TrendingUp : TrendingDown;
-  const color = isUp ? "var(--accent-orange)" : "var(--accent-cyan)";
 
   return (
-    <span className="flex items-center gap-0.5 text-[11px] font-mono" style={{ color }}>
-      <Icon size={10} />
+    <span className="flex items-center gap-1 text-[13px] font-mono tabular-nums text-[rgba(var(--ui-fg),0.55)]">
+      <Icon size={11} />
       {isUp ? "+" : ""}
       {diff.toFixed(0)}%
     </span>
@@ -419,20 +409,22 @@ const ThroughputComparison: React.FC<{ a: SessionData; b: SessionData }> = ({ a,
   );
 
   return (
-    <div className="mb-8">
-      <SectionHeader title="Throughput Overlay" />
-      <p className="text-[10px] text-[rgba(var(--ui-fg),0.25)] mb-2">
-        Both sessions normalized to relative timeline for comparison
+    <div className="mb-10">
+      <SectionLabel>Throughput</SectionLabel>
+      <p className="text-[13px] text-[rgba(var(--ui-fg),0.25)] -mt-2 mb-4">
+        Normalized to relative timeline
       </p>
-      <UPlotChart
-        data={chartData}
-        series={series}
-        height={180}
-        yFormat={(v) => (Number.isFinite(v) ? `${v.toFixed(1)} Mbps` : "0")}
-      />
-      <div className="flex justify-between mt-1 px-1">
-        <span className="text-[9px] text-[rgba(var(--ui-fg),0.2)] font-medium">Start</span>
-        <span className="text-[9px] text-[rgba(var(--ui-fg),0.2)] font-medium">End →</span>
+      <div className="rounded-lg border border-[rgba(var(--ui-fg),0.04)] bg-[rgba(var(--ui-fg),0.015)] p-4">
+        <UPlotChart
+          data={chartData}
+          series={series}
+          height={180}
+          yFormat={(v) => (Number.isFinite(v) ? `${v.toFixed(1)} Mbps` : "0")}
+        />
+      </div>
+      <div className="flex justify-between mt-2 px-1">
+        <span className="text-[13px] text-[rgba(var(--ui-fg),0.15)] font-mono">0%</span>
+        <span className="text-[13px] text-[rgba(var(--ui-fg),0.15)] font-mono">100%</span>
       </div>
     </div>
   );
@@ -453,24 +445,12 @@ const DestinationDiff: React.FC<{ a: SessionData; b: SessionData }> = ({ a, b })
   }, [a.destinations, b.destinations]);
 
   return (
-    <div className="mb-8">
-      <SectionHeader title="Destination Differences" />
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <DestCol
-          label={`Only in A (${onlyA.length})`}
-          color="var(--accent-cyan)"
-          dests={onlyA.slice(0, 10)}
-        />
-        <DestCol
-          label={`Shared (${shared.length})`}
-          color="rgba(var(--ui-fg), 0.4)"
-          dests={shared.slice(0, 10)}
-        />
-        <DestCol
-          label={`Only in B (${onlyB.length})`}
-          color="var(--accent-orange)"
-          dests={onlyB.slice(0, 10)}
-        />
+    <div className="mb-10">
+      <SectionLabel>Destinations</SectionLabel>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <DestCol label="Only in A" count={onlyA.length} dests={onlyA.slice(0, 10)} />
+        <DestCol label="Shared" count={shared.length} dests={shared.slice(0, 10)} />
+        <DestCol label="Only in B" count={onlyB.length} dests={onlyB.slice(0, 10)} />
       </div>
     </div>
   );
@@ -478,21 +458,24 @@ const DestinationDiff: React.FC<{ a: SessionData; b: SessionData }> = ({ a, b })
 
 const DestCol: React.FC<{
   label: string;
-  color: string;
+  count: number;
   dests: DestinationRecord[];
-}> = ({ label, color, dests }) => (
+}> = ({ label, count, dests }) => (
   <div>
-    <div className="text-[10px] uppercase tracking-wider font-semibold mb-2" style={{ color }}>
-      {label}
+    <div className="flex items-baseline gap-2 mb-2">
+      <span className="text-[13px] text-[rgba(var(--ui-fg),0.4)]">{label}</span>
+      <span className="text-[13px] text-[rgba(var(--ui-fg),0.2)] font-mono tabular-nums">
+        {count}
+      </span>
     </div>
     {dests.length === 0 ? (
-      <div className="text-[11px] text-[rgba(var(--ui-fg),0.2)]">None</div>
+      <div className="text-[13px] text-[rgba(var(--ui-fg),0.15)]">\u2014</div>
     ) : (
-      <div className="space-y-0.5">
+      <div className="space-y-1">
         {dests.map((d) => (
-          <div key={d.ip} className="text-[11px] text-[rgba(var(--ui-fg),0.5)] truncate">
+          <div key={d.ip} className="text-[13px] text-[rgba(var(--ui-fg),0.45)] truncate font-mono">
             {d.org || d.ip}
-            {d.city && <span className="text-[rgba(var(--ui-fg),0.25)]"> · {d.city}</span>}
+            {d.city && <span className="text-[rgba(var(--ui-fg),0.2)]"> · {d.city}</span>}
           </div>
         ))}
       </div>
@@ -500,10 +483,11 @@ const DestCol: React.FC<{
   </div>
 );
 
-// ─── Shared sub-components ──────────────────────────────────────────────────
-
-const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
-  <h2 className="text-[13px] font-medium text-[rgba(var(--ui-fg),0.6)] mb-3">{title}</h2>
+const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="flex items-center gap-3 mb-4">
+    <h2 className="text-[13px] font-bold tracking-[1.5px] uppercase text-[rgba(var(--ui-fg),0.25)] shrink-0">
+      {children}
+    </h2>
+    <div className="flex-1 h-px bg-[rgba(var(--ui-fg),0.04)]" />
+  </div>
 );
-
-// ─── Helpers ────────────────────────────────────────────────────────────────

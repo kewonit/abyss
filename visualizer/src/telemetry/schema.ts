@@ -42,6 +42,8 @@ interface NetMetrics {
 export interface TelemetryFrame {
   schema: number;
   t: number;
+  /** When true this is a lightweight heartbeat — flows array is empty and should not overwrite existing flows */
+  light?: boolean;
   net: NetMetrics;
   proto: ProtoCounters;
   flows: GeoFlow[];

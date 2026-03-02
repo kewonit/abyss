@@ -224,7 +224,7 @@ export const UPlotChart: React.FC<UPlotChartProps> = ({
     <div ref={containerRef} className="uplot-wrapper w-full relative" style={{ minHeight: height }}>
       {!hasData && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-[11px] text-[rgba(var(--ui-fg),0.2)] italic">
+          <span className="text-[13px] text-[rgba(var(--ui-fg),0.2)] italic">
             No data available
           </span>
         </div>

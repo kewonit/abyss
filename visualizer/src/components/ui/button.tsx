@@ -30,7 +30,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           variant === "link" && "text-[var(--accent-cyan)] underline-offset-4 hover:underline",
           // sizes
           size === "default" && "h-9 px-4 py-2",
-          size === "sm" && "h-7 rounded-md px-3 text-xs",
+          size === "sm" && "h-7 rounded-md px-3 text-[13px]",
           size === "lg" && "h-10 rounded-lg px-6",
           size === "icon" && "h-8 w-8 rounded-lg",
           className

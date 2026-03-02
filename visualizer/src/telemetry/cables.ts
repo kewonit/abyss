@@ -154,7 +154,8 @@ function scoreFeatureForRoute(
   dstDist: number;
   progressRatio: number;
 } | null {
-  const corridorWidth = Math.max(80, Math.min(300, directDist * 0.12));
+  // Tighter corridor — maxes at 150km (was 300km) for more realistic matching
+  const corridorWidth = Math.max(60, Math.min(150, directDist * 0.1));
 
   let minSrcDist = Infinity,
     minDstDist = Infinity;
@@ -207,7 +208,7 @@ function scoreFeatureForRoute(
         flow.dstLng
       );
 
-      if (crossDist < corridorWidth && alongPos >= -0.05 && alongPos <= 1.05) {
+      if (crossDist < corridorWidth && alongPos >= -0.02 && alongPos <= 1.02) {
         pointsInCorridor++;
       }
     }
@@ -220,18 +221,23 @@ function scoreFeatureForRoute(
   const dstPointToDst = hav(flow.dstLat, flow.dstLng, dstLat, dstLng);
   const progressRatio = (srcPointToDst - dstPointToDst) / directDist;
 
-  const nearSource = minSrcDist < corridorWidth * 1.5;
-  const nearDest = minDstDist < corridorWidth * 1.5;
+  const nearSource = minSrcDist < corridorWidth * 1.2;
+  const nearDest = minDstDist < corridorWidth * 1.2;
 
+  // Stricter matching: require cable to be near BOTH endpoints, or have high
+  // corridor coverage AND positive progress from src toward dst.
   const isUseful =
-    (corridorRatio >= 0.4 && progressRatio > -0.1) ||
-    (nearSource && nearDest) ||
-    (corridorRatio >= 0.25 && (nearSource || nearDest) && progressRatio > 0);
+    (corridorRatio >= 0.45 && progressRatio > 0.1 && nearSource && nearDest) ||
+    (nearSource && nearDest && corridorRatio >= 0.15 && progressRatio > 0) ||
+    (corridorRatio >= 0.5 && progressRatio > 0.2 && (nearSource || nearDest));
 
   if (!isUseful) return null;
 
+  // Penalize cables that don't strongly progress from src → dst
+  const progressPenalty = progressRatio < 0.3 ? 2.0 : 1.0;
   const score =
-    ((minSrcDist + minDstDist) * (1.1 - corridorRatio)) / Math.max(0.1, progressRatio + 0.5);
+    ((minSrcDist + minDstDist) * (1.1 - corridorRatio) * progressPenalty) /
+    Math.max(0.1, progressRatio + 0.5);
 
   return { score, srcDist: minSrcDist, dstDist: minDstDist, progressRatio };
 }
@@ -246,7 +252,8 @@ export function matchFlowsPerFlow(
     perFlowCables.set(flow.flowId, new Set<string>());
 
     const directDist = hav(flow.srcLat, flow.srcLng, flow.dstLat, flow.dstLng);
-    if (directDist < 200) continue;
+    // Skip cable matching for shorter distances — these flows use terrestrial routes
+    if (directDist < 400) continue;
 
     const scoredFeatures: Array<{
       fid: string;
@@ -267,7 +274,7 @@ export function matchFlowsPerFlow(
     scoredFeatures.sort((a, b) => a.score - b.score);
 
     const selected = new Set<string>();
-    const corridorWidth = Math.max(80, Math.min(300, directDist * 0.12));
+    const corridorWidth = Math.max(60, Math.min(150, directDist * 0.1));
 
     let coveredFromSrc = 0;
     let coveredToDst = directDist;
@@ -282,9 +289,10 @@ export function matchFlowsPerFlow(
         if (sf.dstDist < coveredToDst) coveredToDst = sf.dstDist;
 
         if (coveredFromSrc < corridorWidth && coveredToDst < corridorWidth) {
-          if (selected.size >= 3 && sf.score > scoredFeatures[0].score * 2) break;
+          if (selected.size >= 2 && sf.score > scoredFeatures[0].score * 1.5) break;
         }
-        if (selected.size >= 8) break;
+        // Cap at 5 cables max per flow (was 8) for cleaner visualization
+        if (selected.size >= 5) break;
       }
     }
 

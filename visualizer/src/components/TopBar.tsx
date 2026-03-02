@@ -3,7 +3,6 @@ import {
   Settings,
   Navigation,
   Clock,
-  Circle,
   BarChart3,
   Database,
   Trash2,
@@ -42,16 +41,10 @@ import {
 } from "./ui/alert-dialog";
 import { ScrollArea } from "./ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
-import { formatBitRate } from "../lib/utils";
 
 export const TopBar: React.FC = () => {
   // Primitive selectors — only re-render when the actual number changes,
   // not on every frame when the parent object reference changes.
-  const hasFrame = useTelemetryStore((s) => s.frame !== null);
-  const bps = useTelemetryStore((s) => s.frame?.net.bps ?? 0);
-  const uploadBps = useTelemetryStore((s) => s.frame?.net.uploadBps ?? 0);
-  const downloadBps = useTelemetryStore((s) => s.frame?.net.downloadBps ?? 0);
-  const latencyMs = useTelemetryStore((s) => s.frame?.net.latencyMs ?? 0);
   const recording = useTelemetryStore((s) => s.recording);
   const currentSessionId = useTelemetryStore((s) => s.currentSessionId);
   const toggleDrawer = useTelemetryStore((s) => s.toggleDrawer);
@@ -336,7 +329,7 @@ export const TopBar: React.FC = () => {
     <>
       <div className="absolute top-4 left-4">
         <div className="inline-flex items-center rounded-lg border border-(--pill-border) bg-(--pill-bg) px-3 py-2 backdrop-blur-xl">
-          <span className="font-sans text-[12px] font-bold tracking-[2px] text-[rgba(var(--ui-fg),0.88)]">
+          <span className="font-sans text-[14px] font-bold tracking-[2px] text-[rgba(var(--ui-fg),0.88)]">
             ABYSS
           </span>
         </div>
@@ -347,13 +340,13 @@ export const TopBar: React.FC = () => {
         <div className="inline-flex min-w-max items-center gap-2 rounded-xl border border-(--pill-border) bg-(--pill-bg) px-2 py-2 backdrop-blur-xl">
           {healthScore && healthScore.score > 0 && (
             <div
-              className="flex h-8 items-center gap-2 rounded-lg border border-[rgba(var(--ui-fg),0.08)] bg-[rgba(var(--ui-fg),0.02)] px-2.5 max-[700px]:hidden cursor-default"
+              className="flex h-8 items-center gap-1.5 rounded-lg border border-[rgba(var(--ui-fg),0.08)] bg-[rgba(var(--ui-fg),0.02)] px-2.5 max-[700px]:hidden cursor-default"
               title={healthScore.details}
             >
               <span
-                className="inline-block h-2 w-2 rounded-full"
+                className="text-[13px] font-medium tracking-[0.2px]"
                 style={{
-                  backgroundColor:
+                  color:
                     healthScore.score >= 80
                       ? "var(--accent-green)"
                       : healthScore.score >= 60
@@ -362,11 +355,10 @@ export const TopBar: React.FC = () => {
                           ? "var(--accent-orange)"
                           : "var(--accent-red)",
                 }}
-              />
-              <span className="text-[11px] font-medium tracking-[0.2px] text-[rgba(var(--ui-fg),0.62)]">
+              >
                 Health
               </span>
-              <span className="text-[11px] font-semibold tabular-nums text-[rgba(var(--ui-fg),0.88)]">
+              <span className="text-[13px] font-semibold tabular-nums text-[rgba(var(--ui-fg),0.88)]">
                 {healthScore.score}
               </span>
             </div>
@@ -379,23 +371,18 @@ export const TopBar: React.FC = () => {
               title={liveAnomalies.map((a) => a.message).join("\n")}
             >
               <AlertTriangle size={12} className="text-(--accent-amber)" />
-              <span className="text-[11px] font-medium tracking-[0.2px] text-(--accent-amber)">
+              <span className="text-[13px] font-medium tracking-[0.2px] text-(--accent-amber)">
                 Alerts
               </span>
-              <span className="text-[11px] font-semibold tabular-nums text-(--accent-amber)">
+              <span className="text-[13px] font-semibold tabular-nums text-(--accent-amber)">
                 {liveAnomalies.length}
               </span>
             </div>
           )}
 
           {recording && (
-            <div className="flex h-8 items-center gap-2 rounded-lg border border-[rgba(255,77,106,0.24)] bg-[rgba(255,77,106,0.08)] px-2.5 max-[560px]:hidden">
-              <Circle
-                size={6}
-                fill="var(--accent-red)"
-                className="text-(--accent-red) animate-pulse"
-              />
-              <span className="text-[11px] font-semibold tracking-[0.5px] uppercase text-(--accent-red)">
+            <div className="flex h-8 items-center rounded-lg border border-[rgba(255,77,106,0.12)] bg-[rgba(255,77,106,0.04)] px-2.5 max-[560px]:hidden">
+              <span className="text-[13px] font-medium tracking-[0.5px] uppercase text-[rgba(255,77,106,0.6)]">
                 REC
               </span>
             </div>
@@ -412,7 +399,7 @@ export const TopBar: React.FC = () => {
                   className="h-8 rounded-lg border-[rgba(var(--ui-fg),0.08)] bg-[rgba(var(--ui-fg),0.02)] px-3 text-[rgba(var(--ui-fg),0.68)] hover:bg-[rgba(var(--ui-fg),0.08)] hover:text-[rgba(var(--ui-fg),0.9)]"
                   onClick={() => setView("live")}
                 >
-                  <span className="text-[11px] font-medium tracking-[0.3px] uppercase">Live</span>
+                  <span className="text-[13px] font-medium tracking-[0.3px] uppercase">Live</span>
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Back to live view</TooltipContent>
@@ -457,9 +444,11 @@ export const TopBar: React.FC = () => {
         </div>
       </div>
 
-      {/* Bottom-left controls — only shown on map views */}
+      {/* Bottom-left controls — only shown on map views, positioned above the stats strip */}
       {(view === "live" || view === "playback") && (
-        <div className="absolute bottom-4 left-4 flex flex-col gap-2.5">
+        <div
+          className={`absolute left-4 flex flex-col gap-2.5 ${view === "live" ? "bottom-33" : "bottom-4"}`}
+        >
           <div className="flex items-center gap-2">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -502,16 +491,16 @@ export const TopBar: React.FC = () => {
                   onValueChange={(v) => setSettingsTab(v as typeof settingsTab)}
                 >
                   <TabsList className="w-full grid grid-cols-4 mb-2">
-                    <TabsTrigger value="general" className="text-[11px]">
+                    <TabsTrigger value="general" className="text-[13px]">
                       General
                     </TabsTrigger>
-                    <TabsTrigger value="storage" className="text-[11px]">
+                    <TabsTrigger value="storage" className="text-[13px]">
                       Storage
                     </TabsTrigger>
-                    <TabsTrigger value="notifications" className="text-[11px]">
+                    <TabsTrigger value="notifications" className="text-[13px]">
                       Alerts
                     </TabsTrigger>
-                    <TabsTrigger value="appearance" className="text-[11px]">
+                    <TabsTrigger value="appearance" className="text-[13px]">
                       Appearance
                     </TabsTrigger>
                   </TabsList>
@@ -528,10 +517,10 @@ export const TopBar: React.FC = () => {
                             style={{ padding: "12px 16px" }}
                             className="bg-[rgba(var(--ui-fg),0.03)] rounded-xl border border-[rgba(var(--ui-fg),0.05)]"
                           >
-                            <span className="text-[10px] font-semibold tracking-[0.8px] uppercase text-[rgba(var(--ui-fg),0.35)] block mb-1">
+                            <span className="text-[14px] font-semibold tracking-[0.8px] uppercase text-[rgba(var(--ui-fg),0.35)] block mb-1">
                               Database Path
                             </span>
-                            <span className="text-[11px] text-[rgba(var(--ui-fg),0.5)] font-mono break-all">
+                            <span className="text-[13px] text-[rgba(var(--ui-fg),0.5)] font-mono break-all">
                               {dbPath}
                             </span>
                           </div>
@@ -540,7 +529,7 @@ export const TopBar: React.FC = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="flex-1 gap-1.5 text-[11px] font-semibold tracking-[0.5px] uppercase"
+                            className="flex-1 gap-1.5 text-[13px] font-semibold tracking-[0.5px] uppercase"
                             onClick={handleOpenDataFolder}
                             title="Open database folder"
                           >
@@ -559,10 +548,10 @@ export const TopBar: React.FC = () => {
                           className="flex items-center justify-between bg-[rgba(var(--ui-fg),0.03)] rounded-xl border border-[rgba(var(--ui-fg),0.05)]"
                         >
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-[13px] font-medium text-[rgba(var(--ui-fg),0.9)]">
+                            <span className="text-[15px] font-medium text-[rgba(var(--ui-fg),0.9)]">
                               Dark Mode
                             </span>
-                            <span className="text-[11px] text-[rgba(var(--ui-fg),0.45)]">
+                            <span className="text-[13px] text-[rgba(var(--ui-fg),0.45)]">
                               Toggle between dark and light theme
                             </span>
                           </div>
@@ -581,11 +570,11 @@ export const TopBar: React.FC = () => {
                           <div className="flex flex-col gap-0.5">
                             <div className="flex items-center gap-1.5">
                               <Bell size={12} className="text-[rgba(var(--ui-fg),0.5)]" />
-                              <span className="text-[13px] font-medium text-[rgba(var(--ui-fg),0.9)]">
+                              <span className="text-[15px] font-medium text-[rgba(var(--ui-fg),0.9)]">
                                 Health Alerts
                               </span>
                             </div>
-                            <span className="text-[11px] text-[rgba(var(--ui-fg),0.45)]">
+                            <span className="text-[13px] text-[rgba(var(--ui-fg),0.45)]">
                               Alert when health score drops critically
                             </span>
                           </div>
@@ -607,28 +596,28 @@ export const TopBar: React.FC = () => {
                             className="grid grid-cols-3 gap-3 bg-[rgba(var(--ui-fg),0.03)] rounded-xl border border-[rgba(var(--ui-fg),0.05)]"
                           >
                             <div className="flex flex-col gap-0.5">
-                              <span className="text-[10px] font-semibold tracking-[0.8px] uppercase text-[rgba(var(--ui-fg),0.35)]">
+                              <span className="text-[14px] font-semibold tracking-[0.8px] uppercase text-[rgba(var(--ui-fg),0.35)]">
                                 Sessions
                               </span>
-                              <span className="text-[14px] font-semibold text-[rgba(var(--ui-fg),0.85)] tabular-nums">
+                              <span className="text-[16px] font-semibold text-[rgba(var(--ui-fg),0.85)] tabular-nums">
                                 {stats.totalSessions}
                               </span>
                             </div>
                             <div className="flex flex-col gap-0.5">
-                              <span className="text-[10px] font-semibold tracking-[0.8px] uppercase text-[rgba(var(--ui-fg),0.35)]">
+                              <span className="text-[14px] font-semibold tracking-[0.8px] uppercase text-[rgba(var(--ui-fg),0.35)]">
                                 DB Size
                               </span>
-                              <span className="text-[14px] font-semibold text-[rgba(var(--ui-fg),0.85)] tabular-nums">
+                              <span className="text-[16px] font-semibold text-[rgba(var(--ui-fg),0.85)] tabular-nums">
                                 {Number.isFinite(stats.databaseSizeMb)
                                   ? `${stats.databaseSizeMb.toFixed(1)} MB`
                                   : "—"}
                               </span>
                             </div>
                             <div className="flex flex-col gap-0.5">
-                              <span className="text-[10px] font-semibold tracking-[0.8px] uppercase text-[rgba(var(--ui-fg),0.35)]">
+                              <span className="text-[14px] font-semibold tracking-[0.8px] uppercase text-[rgba(var(--ui-fg),0.35)]">
                                 Oldest
                               </span>
-                              <span className="text-[12px] font-medium text-[rgba(var(--ui-fg),0.65)] tabular-nums">
+                              <span className="text-[14px] font-medium text-[rgba(var(--ui-fg),0.65)] tabular-nums">
                                 {(() => {
                                   if (!stats.oldestSession) return "—";
                                   try {
@@ -648,11 +637,11 @@ export const TopBar: React.FC = () => {
                           className="flex items-center justify-between bg-[rgba(var(--ui-fg),0.03)] rounded-xl border border-[rgba(var(--ui-fg),0.05)]"
                         >
                           <div className="flex flex-col gap-0.5" style={{ flex: 1 }}>
-                            <span className="text-[13px] font-medium text-[rgba(var(--ui-fg),0.9)]">
+                            <span className="text-[15px] font-medium text-[rgba(var(--ui-fg),0.9)]">
                               Auto-delete old sessions
                             </span>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-[11px] text-[rgba(var(--ui-fg),0.45)]">
+                              <span className="text-[13px] text-[rgba(var(--ui-fg),0.45)]">
                                 Delete sessions older than
                               </span>
                               <input
@@ -669,10 +658,10 @@ export const TopBar: React.FC = () => {
                                     ),
                                   }))
                                 }
-                                className="w-12 text-center text-[12px] font-mono bg-[rgba(var(--ui-fg),0.06)] border border-[rgba(var(--ui-fg),0.1)] rounded text-[rgba(var(--ui-fg),0.8)]"
+                                className="w-12 text-center text-[14px] font-mono bg-[rgba(var(--ui-fg),0.06)] border border-[rgba(var(--ui-fg),0.1)] rounded text-[rgba(var(--ui-fg),0.8)]"
                                 style={{ padding: "2px 4px" }}
                               />
-                              <span className="text-[11px] text-[rgba(var(--ui-fg),0.45)]">
+                              <span className="text-[13px] text-[rgba(var(--ui-fg),0.45)]">
                                 days
                               </span>
                             </div>
@@ -694,11 +683,11 @@ export const TopBar: React.FC = () => {
                           className="flex items-center justify-between bg-[rgba(var(--ui-fg),0.03)] rounded-xl border border-[rgba(var(--ui-fg),0.05)]"
                         >
                           <div className="flex flex-col gap-0.5" style={{ flex: 1 }}>
-                            <span className="text-[13px] font-medium text-[rgba(var(--ui-fg),0.9)]">
+                            <span className="text-[15px] font-medium text-[rgba(var(--ui-fg),0.9)]">
                               Limit total sessions
                             </span>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-[11px] text-[rgba(var(--ui-fg),0.45)]">
+                              <span className="text-[13px] text-[rgba(var(--ui-fg),0.45)]">
                                 Keep at most
                               </span>
                               <input
@@ -715,10 +704,10 @@ export const TopBar: React.FC = () => {
                                     ),
                                   }))
                                 }
-                                className="w-14 text-center text-[12px] font-mono bg-[rgba(var(--ui-fg),0.06)] border border-[rgba(var(--ui-fg),0.1)] rounded text-[rgba(var(--ui-fg),0.8)]"
+                                className="w-14 text-center text-[14px] font-mono bg-[rgba(var(--ui-fg),0.06)] border border-[rgba(var(--ui-fg),0.1)] rounded text-[rgba(var(--ui-fg),0.8)]"
                                 style={{ padding: "2px 4px" }}
                               />
-                              <span className="text-[11px] text-[rgba(var(--ui-fg),0.45)]">
+                              <span className="text-[13px] text-[rgba(var(--ui-fg),0.45)]">
                                 sessions
                               </span>
                             </div>
@@ -739,7 +728,7 @@ export const TopBar: React.FC = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="flex-1 gap-1.5 text-[11px] font-semibold tracking-[0.5px] uppercase"
+                            className="flex-1 gap-1.5 text-[13px] font-semibold tracking-[0.5px] uppercase"
                             onClick={handleManualCleanup}
                             disabled={
                               storageBusy || (!autoCleanupAge.enabled && !autoCleanupMax.enabled)
@@ -752,7 +741,7 @@ export const TopBar: React.FC = () => {
                           <Button
                             variant="outline"
                             size="icon"
-                            className="text-[11px]"
+                            className="text-[13px]"
                             onClick={handleOpenDataFolder}
                             title="Open database folder"
                           >
@@ -766,7 +755,7 @@ export const TopBar: React.FC = () => {
                             <Button
                               variant="destructive"
                               size="sm"
-                              className="w-full gap-1.5 text-[11px] font-semibold tracking-[0.5px] uppercase bg-(--accent-red)/8 text-(--accent-red) border border-(--accent-red)/15 hover:bg-(--accent-red)/15"
+                              className="w-full gap-1.5 text-[13px] font-semibold tracking-[0.5px] uppercase bg-(--accent-red)/8 text-(--accent-red) border border-(--accent-red)/15 hover:bg-(--accent-red)/15"
                             >
                               <Trash2 size={12} />
                               Delete All Sessions
@@ -796,7 +785,7 @@ export const TopBar: React.FC = () => {
 
                         {/* Status message */}
                         {storageMsg && (
-                          <span className="text-[11px] text-center font-medium text-(--accent-cyan)">
+                          <span className="text-[13px] text-center font-medium text-(--accent-cyan)">
                             {storageMsg}
                           </span>
                         )}
@@ -811,54 +800,11 @@ export const TopBar: React.FC = () => {
               style={{ padding: "8px 16px" }}
               className="inline-flex items-center gap-2.5 bg-(--pill-bg) border border-(--pill-border) rounded-(--pill-radius) backdrop-blur-xl"
             >
-              <span className="text-[12px] font-medium tracking-[0.5px] text-[rgba(var(--ui-fg),0.5)] font-mono tabular-nums">
+              <span className="text-[14px] font-medium tracking-[0.5px] text-[rgba(var(--ui-fg),0.5)] font-mono tabular-nums">
                 {clock}
               </span>
             </div>
           </div>
-
-          {hasFrame && (
-            <div
-              style={{ padding: "10px 16px" }}
-              className="inline-flex items-center gap-3.5 bg-(--pill-bg) border border-(--pill-border) rounded-(--pill-radius) backdrop-blur-xl max-[900px]:hidden"
-            >
-              <span className="flex flex-col gap-px">
-                <span className="text-[10px] font-semibold tracking-[1.2px] uppercase text-[rgba(var(--ui-fg),0.3)]">
-                  Throughput
-                </span>
-                <span className="font-mono text-[13px] font-semibold text-[rgba(var(--ui-fg),0.75)] tabular-nums whitespace-nowrap transition-colors duration-300">
-                  {formatBitRate(bps * 8)}
-                </span>
-              </span>
-              <span className="w-px h-4 bg-[rgba(var(--ui-fg),0.08)] shrink-0" />
-              <span className="flex flex-col gap-px">
-                <span className="text-[10px] font-semibold tracking-[1.2px] uppercase text-[rgba(var(--ui-fg),0.3)]">
-                  Upload
-                </span>
-                <span className="font-mono text-[13px] font-semibold text-(--accent-orange) tabular-nums whitespace-nowrap transition-colors duration-300">
-                  {formatBitRate(uploadBps * 8)}
-                </span>
-              </span>
-              <span className="w-px h-4 bg-[rgba(var(--ui-fg),0.08)] shrink-0" />
-              <span className="flex flex-col gap-px">
-                <span className="text-[10px] font-semibold tracking-[1.2px] uppercase text-[rgba(var(--ui-fg),0.3)]">
-                  Download
-                </span>
-                <span className="font-mono text-[13px] font-semibold text-(--accent-cyan) tabular-nums whitespace-nowrap transition-colors duration-300">
-                  {formatBitRate(downloadBps * 8)}
-                </span>
-              </span>
-              <span className="w-px h-4 bg-[rgba(var(--ui-fg),0.08)] shrink-0" />
-              <span className="flex flex-col gap-px">
-                <span className="text-[10px] font-semibold tracking-[1.2px] uppercase text-[rgba(var(--ui-fg),0.3)]">
-                  Latency
-                </span>
-                <span className="font-mono text-[13px] font-semibold text-(--accent-amber) tabular-nums whitespace-nowrap transition-colors duration-300">
-                  {latencyMs.toFixed(0)} ms
-                </span>
-              </span>
-            </div>
-          )}
         </div>
       )}
     </>

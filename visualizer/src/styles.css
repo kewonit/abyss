@@ -34,7 +34,7 @@
     left: 16px;
     z-index: 9999;
     padding: 8px 16px;
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--page-fg);
     background: var(--page-bg);
@@ -158,6 +158,11 @@ body.light-mode .maplibregl-ctrl-group {
   border-color: rgba(0, 0, 0, 0.1) !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
 }
+
+/* Push MapLibre zoom/compass controls above the bottom stats strip */
+.maplibregl-ctrl-bottom-right {
+  bottom: 132px !important;
+}
 body.light-mode .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
   filter: brightness(0.4);
 }
@@ -192,7 +197,7 @@ body.light-mode
     background: var(--page-bg);
     color: var(--page-fg);
     font-family: var(--font-sans);
-    font-size: 14px;
+    font-size: 15px;
     -webkit-font-smoothing: antialiased;
     transition:
       background 0.3s ease,
@@ -314,37 +319,6 @@ body.light-mode
   animation: tab-fade-in 0.15s ease-out both;
 }
 
-/* ── Scrub bar thumb ──────────────────────────────────────────── */
-input[type="range"][aria-label="Playback position"] {
-  -webkit-appearance: none;
-  appearance: none;
-  background: transparent;
-}
-input[type="range"][aria-label="Playback position"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--accent-cyan);
-  box-shadow: 0 0 4px rgba(0, 212, 245, 0.4);
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-input[type="range"][aria-label="Playback position"]:hover::-webkit-slider-thumb,
-input[type="range"][aria-label="Playback position"]:active::-webkit-slider-thumb {
-  opacity: 1;
-}
-input[type="range"][aria-label="Playback position"]::-moz-range-thumb {
-  width: 12px;
-  height: 12px;
-  border: none;
-  border-radius: 50%;
-  background: var(--accent-cyan);
-  box-shadow: 0 0 4px rgba(0, 212, 245, 0.4);
-  cursor: pointer;
-}
-
 /* == MapLibre overrides =========================================== */
 
 .maplibregl-ctrl-attrib {
@@ -388,7 +362,7 @@ input[type="range"][aria-label="Playback position"]::-moz-range-thumb {
 }
 
 .uplot-wrapper .u-legend {
-  font-size: 10px !important;
+  font-size: 12px !important;
   padding: 4px 0 0 !important;
   text-align: left !important;
 }
@@ -408,13 +382,13 @@ input[type="range"][aria-label="Playback position"]::-moz-range-thumb {
 
 .uplot-wrapper .u-legend .u-label {
   color: rgba(var(--ui-fg), 0.4) !important;
-  font-size: 10px !important;
+  font-size: 12px !important;
 }
 
 .uplot-wrapper .u-legend .u-value {
   color: rgba(var(--ui-fg), 0.6) !important;
   font-family: var(--font-mono) !important;
-  font-size: 10px !important;
+  font-size: 12px !important;
 }
 
 .uplot-wrapper .u-select {

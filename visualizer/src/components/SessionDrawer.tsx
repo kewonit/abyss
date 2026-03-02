@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { X, Clock, Circle, Trash2, ChevronRight, Search } from "lucide-react";
+import { X, Clock, Trash2, ChevronRight, Search } from "lucide-react";
 import { useTelemetryStore } from "../telemetry/store";
 import {
   listSessions,
@@ -213,7 +213,7 @@ export const SessionDrawer: React.FC = () => {
         role="dialog"
         aria-label="Sessions"
         aria-modal="true"
-        className={`fixed top-0 right-0 z-50 h-full w-108 max-w-[96vw] max-[640px]:w-[calc(100vw-8px)] max-[640px]:max-w-[calc(100vw-8px)] flex flex-col overflow-x-hidden
+        className={`fixed top-0 right-0 z-50 h-full w-lg max-w-[96vw] max-[640px]:w-[calc(100vw-8px)] max-[640px]:max-w-[calc(100vw-8px)] flex flex-col overflow-x-hidden
           bg-[rgba(var(--ui-bg),0.82)] backdrop-blur-2xl border-l border-[rgba(var(--ui-fg),0.08)]
           shadow-[-8px_0_32px_rgba(0,0,0,0.3)]
           transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
@@ -226,27 +226,15 @@ export const SessionDrawer: React.FC = () => {
         >
           <div className="flex items-center gap-2 min-w-0">
             <Clock size={15} className="text-[rgba(var(--ui-fg),0.4)] shrink-0" />
-            <span className="text-[14px] font-semibold tracking-[0.2px] text-[rgba(var(--ui-fg),0.85)] shrink-0">
+            <span className="text-[16px] font-semibold tracking-[0.2px] text-[rgba(var(--ui-fg),0.85)] shrink-0">
               Sessions
             </span>
             {sessions.length > 0 && (
               <span
-                className="font-mono text-[10px] font-semibold text-[rgba(var(--ui-fg),0.35)] bg-[rgba(var(--ui-fg),0.04)] rounded-md shrink-0"
+                className="font-mono text-[14px] font-semibold text-[rgba(var(--ui-fg),0.35)] bg-[rgba(var(--ui-fg),0.04)] rounded-md shrink-0"
                 style={{ padding: "2px 6px" }}
               >
                 {sessions.length}
-              </span>
-            )}
-            {recording && (
-              <span className="flex items-center gap-1 shrink-0">
-                <Circle
-                  size={6}
-                  fill="var(--accent-red)"
-                  className="text-(--accent-red) animate-pulse"
-                />
-                <span className="text-[10px] font-medium text-(--accent-red) tracking-wide uppercase">
-                  REC
-                </span>
               </span>
             )}
           </div>
@@ -273,7 +261,7 @@ export const SessionDrawer: React.FC = () => {
               onChange={(e) => handleSearchChange(e.target.value)}
               placeholder="Search sessions..."
               aria-label="Search sessions"
-              className="w-full rounded-xl bg-[rgba(var(--ui-fg),0.03)] border border-[rgba(var(--ui-fg),0.05)] text-[13px] text-[rgba(var(--ui-fg),0.7)] placeholder:text-[rgba(var(--ui-fg),0.2)] outline-none focus:border-[rgba(var(--accent-cyan),0.3)] focus:bg-[rgba(var(--ui-fg),0.04)] transition-all duration-200"
+              className="w-full rounded-xl bg-[rgba(var(--ui-fg),0.03)] border border-[rgba(var(--ui-fg),0.05)] text-[15px] text-[rgba(var(--ui-fg),0.7)] placeholder:text-[rgba(var(--ui-fg),0.2)] outline-none focus:border-[rgba(var(--accent-cyan),0.3)] focus:bg-[rgba(var(--ui-fg),0.04)] transition-all duration-200"
               style={{ padding: "9px 12px 9px 34px" }}
             />
             {searchQuery && (
@@ -297,7 +285,7 @@ export const SessionDrawer: React.FC = () => {
               className="flex items-center gap-2 rounded-lg bg-[rgba(255,77,106,0.08)] border border-[rgba(255,77,106,0.2)] mb-2"
               style={{ padding: "8px 12px" }}
             >
-              <span className="text-[11px] text-(--accent-red)">{error}</span>
+              <span className="text-[13px] text-(--accent-red)">{error}</span>
             </div>
           )}
 
@@ -316,7 +304,7 @@ export const SessionDrawer: React.FC = () => {
           ) : sessions.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 gap-2">
               <Clock size={20} className="text-[rgba(var(--ui-fg),0.15)]" />
-              <span className="text-[11px] text-[rgba(var(--ui-fg),0.3)]">
+              <span className="text-[13px] text-[rgba(var(--ui-fg),0.3)]">
                 {searchQuery ? "No matching sessions" : "No sessions recorded yet"}
               </span>
             </div>
@@ -335,7 +323,7 @@ export const SessionDrawer: React.FC = () => {
                 return (
                   <div key={group.label} role="group" aria-label={group.label}>
                     <div className="px-2 pt-3 pb-1.5">
-                      <span className="text-[10px] font-semibold tracking-[1.5px] uppercase text-[rgba(var(--ui-fg),0.2)]">
+                      <span className="text-[14px] font-semibold tracking-[1.5px] uppercase text-[rgba(var(--ui-fg),0.2)]">
                         {group.label}
                       </span>
                     </div>
@@ -363,12 +351,12 @@ export const SessionDrawer: React.FC = () => {
         {/* Storage stats footer */}
         {(sessions.length > 0 || dbSizeMb !== null) && (
           <div className="border-t border-[rgba(var(--ui-fg),0.05)] pl-5 pr-6 py-3.5 flex items-center justify-between">
-            <span className="text-[11px] text-[rgba(var(--ui-fg),0.3)] font-mono tabular-nums">
+            <span className="text-[13px] text-[rgba(var(--ui-fg),0.3)] font-mono tabular-nums">
               {formatNumber(sessions.length)} session
               {sessions.length !== 1 ? "s" : ""}
             </span>
             {dbSizeMb !== null && (
-              <span className="text-[11px] text-[rgba(var(--ui-fg),0.3)] font-mono tabular-nums">
+              <span className="text-[13px] text-[rgba(var(--ui-fg),0.3)] font-mono tabular-nums">
                 {dbSizeMb < 1 ? `${Math.round(dbSizeMb * 1024)} KB` : `${dbSizeMb.toFixed(1)} MB`}
               </span>
             )}
@@ -401,11 +389,12 @@ const SessionCard: React.FC<SessionCardProps> = ({
   const totalBytes = safeSum(session.totalBytesUp, session.totalBytesDown);
 
   return (
-    <button
+    <div
       role="option"
+      tabIndex={0}
       aria-selected={isFocused}
       data-idx={dataIdx}
-      className={`group w-full text-left rounded-2xl border transition-all duration-150 card-hover
+      className={`group w-full text-left rounded-2xl border transition-all duration-150 card-hover cursor-pointer
         ${
           isActive
             ? "bg-[rgba(var(--ui-fg),0.04)] border-[rgba(255,77,106,0.15)] recording-pulse"
@@ -415,31 +404,37 @@ const SessionCard: React.FC<SessionCardProps> = ({
         }`}
       style={{ padding: "16px 18px" }}
       onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-col gap-1.5 min-w-0 flex-1">
           {/* Name + status badge */}
           <div className="flex items-center gap-1.5">
             {isActive ? (
-              <Badge variant="recording" className="text-[9px] px-1.5 py-0">
+              <Badge variant="recording" className="text-[13px] px-1.5 py-0">
                 REC
               </Badge>
             ) : session.status === "crashed" ? (
-              <Badge variant="warning" className="text-[9px] px-1.5 py-0">
+              <Badge variant="warning" className="text-[13px] px-1.5 py-0">
                 Crashed
               </Badge>
             ) : (
-              <Badge variant="success" className="text-[9px] px-1.5 py-0 opacity-60">
+              <Badge variant="success" className="text-[13px] px-1.5 py-0 opacity-60">
                 Done
               </Badge>
             )}
-            <span className="text-[13px] font-medium text-[rgba(var(--ui-fg),0.8)] truncate">
+            <span className="text-[15px] font-medium text-[rgba(var(--ui-fg),0.8)] truncate">
               {session.name}
             </span>
           </div>
 
           {/* Date */}
-          <span className="text-[11px] text-[rgba(var(--ui-fg),0.35)] font-mono tabular-nums">
+          <span className="text-[13px] text-[rgba(var(--ui-fg),0.35)] font-mono tabular-nums">
             {formatTimestamp(session.startedAt)}
             {" · "}
             <span className="text-[rgba(var(--ui-fg),0.25)]">
@@ -449,15 +444,15 @@ const SessionCard: React.FC<SessionCardProps> = ({
 
           {/* Stats row */}
           <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-[11px] text-[rgba(var(--ui-fg),0.3)]">
+            <span className="text-[13px] text-[rgba(var(--ui-fg),0.3)]">
               {formatDuration(session.durationSecs)}
             </span>
-            <span className="text-[11px] text-[rgba(var(--ui-fg),0.15)]">·</span>
-            <span className="text-[11px] text-[rgba(var(--ui-fg),0.3)]">
+            <span className="text-[13px] text-[rgba(var(--ui-fg),0.15)]">·</span>
+            <span className="text-[13px] text-[rgba(var(--ui-fg),0.3)]">
               {formatDataSize(totalBytes)}
             </span>
-            <span className="text-[11px] text-[rgba(var(--ui-fg),0.15)]">·</span>
-            <span className="text-[11px] text-[rgba(var(--ui-fg),0.3)]">
+            <span className="text-[13px] text-[rgba(var(--ui-fg),0.15)]">·</span>
+            <span className="text-[13px] text-[rgba(var(--ui-fg),0.3)]">
               {formatNumber(session.totalFlows)} flows
             </span>
           </div>
@@ -500,6 +495,6 @@ const SessionCard: React.FC<SessionCardProps> = ({
           <ChevronRight size={13} className="text-[rgba(var(--ui-fg),0.15)]" />
         </div>
       </div>
-    </button>
+    </div>
   );
 };
