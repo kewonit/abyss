@@ -14,7 +14,7 @@ tauri-host/src-tauri/target/
 .vscode/launch.json
 .vscode/tasks.json
 .idea/
-.github/
+.github/agents
 *.swp
 *.swo
 *~
