@@ -14,7 +14,7 @@ permissions:
 jobs:
   # ── Phase 1: Create a GitHub release ──────────────────────────
   create-release:
-    runs-on: blacksmith-4cpu-ubuntu-2404
+    runs-on: ubuntu-latest
     outputs:
       release_id: ${{ steps.create_release.outputs.id }}
       version: ${{ steps.version.outputs.version }}
