@@ -1,10 +1,5 @@
 import { create } from "zustand";
-import {
-  TelemetryFrame,
-  DerivedMetrics,
-  computeDerivedMetrics,
-  GeoFlow,
-} from "./schema";
+import { TelemetryFrame, DerivedMetrics, computeDerivedMetrics, GeoFlow } from "./schema";
 import type {
   SessionInfo,
   PlaybackFrameRecord,
@@ -13,12 +8,7 @@ import type {
 } from "./sessions";
 
 /** Which top-level view the app is showing. */
-export type AppView =
-  | "live"
-  | "session-detail"
-  | "playback"
-  | "analytics"
-  | "comparison";
+export type AppView = "live" | "session-detail" | "playback" | "analytics" | "comparison";
 
 /**
  * Fixed-capacity ring buffer backed by Float64Array.
@@ -143,7 +133,7 @@ function buildPlaybackFrame(
   fr: PlaybackFrameRecord,
   frameFlows: PlaybackFlowRecord[],
   localLat: number,
-  localLng: number,
+  localLng: number
 ): {
   frame: TelemetryFrame;
   derived: DerivedMetrics;
@@ -204,9 +194,7 @@ function buildPlaybackFrame(
   const throughput = Number.isFinite(derived.throughputMbps)
     ? Math.max(0, derived.throughputMbps)
     : 0;
-  const latency = Number.isFinite(telFrame.net.latencyMs)
-    ? Math.max(0, telFrame.net.latencyMs)
-    : 0;
+  const latency = Number.isFinite(telFrame.net.latencyMs) ? Math.max(0, telFrame.net.latencyMs) : 0;
 
   throughputRing.push(throughput);
   latencyRing.push(latency);
@@ -238,9 +226,7 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
     const throughput = Number.isFinite(derived.throughputMbps)
       ? Math.max(0, derived.throughputMbps)
       : 0;
-    const latency = Number.isFinite(frame.net.latencyMs)
-      ? Math.max(0, frame.net.latencyMs)
-      : 0;
+    const latency = Number.isFinite(frame.net.latencyMs) ? Math.max(0, frame.net.latencyMs) : 0;
 
     throughputRing.push(throughput);
     latencyRing.push(latency);
@@ -285,8 +271,7 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
   // ── Recording indicator ──
   recording: false,
   currentSessionId: null,
-  setRecording: (recording, sessionId) =>
-    set({ recording, currentSessionId: sessionId ?? null }),
+  setRecording: (recording, sessionId) => set({ recording, currentSessionId: sessionId ?? null }),
 
   // ── Playback mode ──
   playback: {

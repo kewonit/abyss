@@ -115,9 +115,7 @@ export const UPlotChart: React.FC<UPlotChartProps> = ({
           width: (s.width ?? 1.5) / devicePixelRatio,
           scale: s.scale ?? "y",
           value: (_u, rawValue) =>
-            rawValue == null
-              ? "—"
-              : `${rawValue.toFixed(1)}${s.unit ? " " + s.unit : ""}`,
+            rawValue == null ? "—" : `${rawValue.toFixed(1)}${s.unit ? " " + s.unit : ""}`,
         });
       }
 
@@ -180,7 +178,7 @@ export const UPlotChart: React.FC<UPlotChartProps> = ({
         },
       };
     },
-    [series, height, timeAxis, extraAxes, scales, yFormat, noLegend],
+    [series, height, timeAxis, extraAxes, scales, yFormat, noLegend]
   );
 
   // Create / resize / destroy
@@ -189,12 +187,7 @@ export const UPlotChart: React.FC<UPlotChartProps> = ({
     if (!container) return;
 
     // Guard: need at least 1 data point and matching series count
-    if (
-      !data ||
-      data.length === 0 ||
-      data[0].length === 0 ||
-      data.length - 1 !== series.length
-    ) {
+    if (!data || data.length === 0 || data[0].length === 0 || data.length - 1 !== series.length) {
       return;
     }
 
@@ -228,11 +221,7 @@ export const UPlotChart: React.FC<UPlotChartProps> = ({
   const hasData = data.length > 0 && data[0].length >= 2;
 
   return (
-    <div
-      ref={containerRef}
-      className="uplot-wrapper w-full relative"
-      style={{ minHeight: height }}
-    >
+    <div ref={containerRef} className="uplot-wrapper w-full relative" style={{ minHeight: height }}>
       {!hasData && (
         <div className="absolute inset-0 flex items-center justify-center">
           <span className="text-[11px] text-[rgba(var(--ui-fg),0.2)] italic">

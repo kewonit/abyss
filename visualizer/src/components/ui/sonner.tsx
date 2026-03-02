@@ -11,8 +11,7 @@ function Toaster({ ...props }: ToasterProps) {
           toast:
             "group toast group-[.toaster]:bg-[rgba(var(--ui-bg),0.92)] group-[.toaster]:text-[rgba(var(--ui-fg),0.85)] group-[.toaster]:border-[rgba(var(--ui-fg),0.08)] group-[.toaster]:shadow-lg group-[.toaster]:backdrop-blur-xl group-[.toaster]:rounded-xl",
           description: "group-[.toast]:text-[rgba(var(--ui-fg),0.5)]",
-          actionButton:
-            "group-[.toast]:bg-[var(--accent-cyan)] group-[.toast]:text-[#010108]",
+          actionButton: "group-[.toast]:bg-[var(--accent-cyan)] group-[.toast]:text-[#010108]",
           cancelButton:
             "group-[.toast]:bg-[rgba(var(--ui-fg),0.06)] group-[.toast]:text-[rgba(var(--ui-fg),0.6)]",
         },

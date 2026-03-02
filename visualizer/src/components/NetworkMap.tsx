@@ -12,10 +12,8 @@ import {
 import type { GeoFlow } from "../telemetry/schema";
 import { formatDataRate } from "../lib/utils";
 
-const STYLE_DARK =
-  "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
-const STYLE_LIGHT =
-  "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
+const STYLE_DARK = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
+const STYLE_LIGHT = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 
 interface CableActivity {
   lastSeen: number;
@@ -54,20 +52,13 @@ function getCanvasTheme(): {
       };
 }
 
-function visFactor(
-  lng: number,
-  lat: number,
-  cLng: number,
-  cLat: number,
-): number {
+function visFactor(lng: number, lat: number, cLng: number, cLat: number): number {
   const R = Math.PI / 180;
   const p1 = cLat * R,
     l1 = cLng * R;
   const p2 = lat * R,
     l2 = lng * R;
-  const cos =
-    Math.sin(p1) * Math.sin(p2) +
-    Math.cos(p1) * Math.cos(p2) * Math.cos(l2 - l1);
+  const cos = Math.sin(p1) * Math.sin(p2) + Math.cos(p1) * Math.cos(p2) * Math.cos(l2 - l1);
 
   if (cos <= 0.05) return 0;
   if (cos < 0.2) return (cos - 0.05) / 0.15;
@@ -85,8 +76,7 @@ function getActivityColor(throughputBps: number): string {
   if (kbps < 100) return "#00d4f5";
   if (kbps < 500) return lerpColor("#00d4f5", "#00ff9f", (kbps - 100) / 400);
   if (kbps < 1000) return lerpColor("#00ff9f", "#ff9f00", (kbps - 500) / 500);
-  if (kbps < 5000)
-    return lerpColor("#ff9f00", "#ff4545", Math.min(1, (kbps - 1000) / 4000));
+  if (kbps < 5000) return lerpColor("#ff9f00", "#ff4545", Math.min(1, (kbps - 1000) / 4000));
   return "#cc2222";
 }
 
@@ -124,7 +114,7 @@ function traceCable(
   cLng: number,
   cLat: number,
   step: number,
-  cache?: ProjectionCache,
+  cache?: ProjectionCache
 ): boolean {
   let anyVisible = false;
 
@@ -192,8 +182,7 @@ function traceCable(
           p = cache.get(key);
           if (p === undefined) {
             const proj = map.project([lng, lat]);
-            p =
-              Number.isFinite(proj.x) && Number.isFinite(proj.y) ? proj : null;
+            p = Number.isFinite(proj.x) && Number.isFinite(proj.y) ? proj : null;
             cache.set(key, p);
           }
         } else {
@@ -212,11 +201,7 @@ function traceCable(
 }
 
 /** Quick hemisphere check — skip cables entirely on the back of the globe. */
-function isFeatureVisible(
-  f: CableFeature,
-  cLng: number,
-  cLat: number,
-): boolean {
+function isFeatureVisible(f: CableFeature, cLng: number, cLat: number): boolean {
   let sumLng = 0;
   let sumLat = 0;
   let count = 0;
@@ -266,9 +251,7 @@ export const NetworkMap = () => {
   const lastHitTestRef = useRef(0);
 
   // Flow persistence — keep recent flows visible for a few seconds
-  const flowBufferRef = useRef<
-    Map<string, { flow: GeoFlow; expiresAt: number }>
-  >(new Map());
+  const flowBufferRef = useRef<Map<string, { flow: GeoFlow; expiresAt: number }>>(new Map());
   const FLOW_PERSIST_MS = 10_000; // keep dots visible 10s after last seen
 
   const flows = useTelemetryStore((s) => s.flows);
@@ -290,77 +273,67 @@ export const NetworkMap = () => {
   const tooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /** Merge current flows into persistence buffer and return combined list */
-  const getPersistedFlows = useCallback(
-    (currentFlows: GeoFlow[]): GeoFlow[] => {
-      const buf = flowBufferRef.current;
-      const now = Date.now();
-      // Update buffer with current flows
-      for (const f of currentFlows) {
-        buf.set(f.id, { flow: f, expiresAt: now + FLOW_PERSIST_MS });
+  const getPersistedFlows = useCallback((currentFlows: GeoFlow[]): GeoFlow[] => {
+    const buf = flowBufferRef.current;
+    const now = Date.now();
+    // Update buffer with current flows
+    for (const f of currentFlows) {
+      buf.set(f.id, { flow: f, expiresAt: now + FLOW_PERSIST_MS });
+    }
+    // Evict expired flows
+    for (const [id, entry] of buf) {
+      if (entry.expiresAt < now) buf.delete(id);
+    }
+    // Return deduplicated combined list
+    return Array.from(buf.values()).map((e) => e.flow);
+  }, []);
+
+  const updateActivityTracking = useCallback((fList: GeoFlow[], now: number) => {
+    const activity = cableActivityRef.current;
+    const throughput = cableThroughputRef.current;
+    const perFlow = perFlowCablesRef.current;
+
+    throughput.clear();
+
+    for (const flow of fList) {
+      const flowCables = perFlow.get(flow.id);
+      if (!flowCables) continue;
+      for (const cableId of flowCables) {
+        throughput.set(cableId, (throughput.get(cableId) ?? 0) + flow.bps);
       }
-      // Evict expired flows
-      for (const [id, entry] of buf) {
-        if (entry.expiresAt < now) buf.delete(id);
+    }
+
+    for (const [cableId, bps] of throughput) {
+      const existing = activity.get(cableId);
+      if (existing) {
+        existing.lastSeen = now;
+        existing.throughput = bps;
+        existing.targetOpacity = 1;
+      } else {
+        activity.set(cableId, {
+          lastSeen: now,
+          throughput: bps,
+          opacity: 0.1,
+          targetOpacity: 1,
+        });
       }
-      // Return deduplicated combined list
-      return Array.from(buf.values()).map((e) => e.flow);
-    },
-    [],
-  );
+    }
 
-  const updateActivityTracking = useCallback(
-    (fList: GeoFlow[], now: number) => {
-      const activity = cableActivityRef.current;
-      const throughput = cableThroughputRef.current;
-      const perFlow = perFlowCablesRef.current;
-
-      throughput.clear();
-
-      for (const flow of fList) {
-        const flowCables = perFlow.get(flow.id);
-        if (!flowCables) continue;
-        for (const cableId of flowCables) {
-          throughput.set(cableId, (throughput.get(cableId) ?? 0) + flow.bps);
+    const toRemove: string[] = [];
+    for (const [cableId, state] of activity) {
+      if (!throughput.has(cableId)) {
+        const age = now - state.lastSeen;
+        if (age > FADE_START_DELAY) {
+          state.targetOpacity = 1 - Math.min(1, (age - FADE_START_DELAY) / FADE_OUT_DURATION);
+        }
+        if (state.opacity < MIN_OPACITY && state.targetOpacity < MIN_OPACITY) {
+          toRemove.push(cableId);
         }
       }
+    }
 
-      for (const [cableId, bps] of throughput) {
-        const existing = activity.get(cableId);
-        if (existing) {
-          existing.lastSeen = now;
-          existing.throughput = bps;
-          existing.targetOpacity = 1;
-        } else {
-          activity.set(cableId, {
-            lastSeen: now,
-            throughput: bps,
-            opacity: 0.1,
-            targetOpacity: 1,
-          });
-        }
-      }
-
-      const toRemove: string[] = [];
-      for (const [cableId, state] of activity) {
-        if (!throughput.has(cableId)) {
-          const age = now - state.lastSeen;
-          if (age > FADE_START_DELAY) {
-            state.targetOpacity =
-              1 - Math.min(1, (age - FADE_START_DELAY) / FADE_OUT_DURATION);
-          }
-          if (
-            state.opacity < MIN_OPACITY &&
-            state.targetOpacity < MIN_OPACITY
-          ) {
-            toRemove.push(cableId);
-          }
-        }
-      }
-
-      for (const id of toRemove) activity.delete(id);
-    },
-    [],
-  );
+    for (const id of toRemove) activity.delete(id);
+  }, []);
 
   const updateOpacities = useCallback((deltaMs: number) => {
     const activity = cableActivityRef.current;
@@ -451,16 +424,11 @@ export const NetworkMap = () => {
         }
       }
     },
-    [],
+    []
   );
 
   const drawActive = useCallback(
-    (
-      map: maplibregl.Map,
-      cvs: HTMLCanvasElement,
-      ts: number,
-      deltaMs: number,
-    ) => {
+    (map: maplibregl.Map, cvs: HTMLCanvasElement, ts: number, deltaMs: number) => {
       updateOpacities(deltaMs);
 
       const ctx = prepCanvas(cvs);
@@ -521,7 +489,7 @@ export const NetworkMap = () => {
         ctx.setLineDash([]);
       }
     },
-    [updateOpacities],
+    [updateOpacities]
   );
 
   useEffect(() => {
@@ -543,10 +511,7 @@ export const NetworkMap = () => {
       canvasContextAttributes: { antialias: false },
     });
 
-    map.addControl(
-      new maplibregl.NavigationControl({ showCompass: true }),
-      "bottom-right",
-    );
+    map.addControl(new maplibregl.NavigationControl({ showCompass: true }), "bottom-right");
 
     map.on("style.load", () => {
       map.setProjection({ type: "globe" });
@@ -593,13 +558,7 @@ export const NetworkMap = () => {
             // Clear animation canvas and sleep — flows useEffect will wake us
             if (animCvs.current) {
               const sleepCtx = animCvs.current.getContext("2d");
-              if (sleepCtx)
-                sleepCtx.clearRect(
-                  0,
-                  0,
-                  animCvs.current.width,
-                  animCvs.current.height,
-                );
+              if (sleepCtx) sleepCtx.clearRect(0, 0, animCvs.current.width, animCvs.current.height);
             }
             rafRef.current = 0;
             return;
@@ -691,7 +650,7 @@ export const NetworkMap = () => {
       perFlowCablesRef.current = perFlow;
       updateActivityTracking(fList, now);
     },
-    [updateActivityTracking],
+    [updateActivityTracking]
   );
 
   useEffect(() => {
@@ -721,11 +680,7 @@ export const NetworkMap = () => {
           }
 
           // Wake rAF if new cable activity detected
-          if (
-            rafRef.current === 0 &&
-            cableActivityRef.current.size > 0 &&
-            tickFnRef.current
-          ) {
+          if (rafRef.current === 0 && cableActivityRef.current.size > 0 && tickFnRef.current) {
             idleFramesRef.current = 0;
             rafRef.current = requestAnimationFrame(tickFnRef.current);
           }
@@ -744,11 +699,7 @@ export const NetworkMap = () => {
     drawStatic(map, staticCvs.current, persistedFlows);
 
     // Wake up rAF loop if it was sleeping and we now have active cables
-    if (
-      rafRef.current === 0 &&
-      cableActivityRef.current.size > 0 &&
-      tickFnRef.current
-    ) {
+    if (rafRef.current === 0 && cableActivityRef.current.size > 0 && tickFnRef.current) {
       idleFramesRef.current = 0;
       rafRef.current = requestAnimationFrame(tickFnRef.current);
     }
@@ -835,9 +786,7 @@ export const NetworkMap = () => {
             <div className="w-24 h-1 rounded-full bg-[rgba(var(--ui-fg),0.06)] overflow-hidden">
               <div className="h-full w-1/3 rounded-full bg-[rgba(var(--ui-fg),0.12)] animate-[shimmer_1.5s_ease-in-out_infinite]" />
             </div>
-            <span className="text-[10px] text-[rgba(var(--ui-fg),0.25)]">
-              Loading map…
-            </span>
+            <span className="text-[10px] text-[rgba(var(--ui-fg),0.25)]">Loading map…</span>
           </div>
         </div>
       )}
@@ -876,16 +825,10 @@ export const NetworkMap = () => {
             </div>
           )}
           <div className="flex items-center gap-3 mt-1.5 text-[10px] font-mono tabular-nums">
-            <span className="text-(--accent-cyan)">
-              {formatDataRate(tooltip.bps)}
-            </span>
-            <span className="text-[rgba(var(--ui-fg),0.4)]">
-              {tooltip.rtt.toFixed(0)}ms
-            </span>
+            <span className="text-(--accent-cyan)">{formatDataRate(tooltip.bps)}</span>
+            <span className="text-[rgba(var(--ui-fg),0.4)]">{tooltip.rtt.toFixed(0)}ms</span>
             {tooltip.service && (
-              <span className="text-[rgba(var(--ui-fg),0.3)]">
-                {tooltip.service}
-              </span>
+              <span className="text-[rgba(var(--ui-fg),0.3)]">{tooltip.service}</span>
             )}
           </div>
           {tooltip.country && (

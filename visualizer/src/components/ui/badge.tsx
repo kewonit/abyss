@@ -32,7 +32,7 @@ function Badge({ className, variant = "default", ...props }: BadgeProps) {
           "bg-[var(--accent-green)]/10 text-[var(--accent-green)] border border-[var(--accent-green)]/20",
         variant === "warning" &&
           "bg-[var(--accent-amber)]/10 text-[var(--accent-amber)] border border-[var(--accent-amber)]/20",
-        className,
+        className
       )}
       {...props}
     />

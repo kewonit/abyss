@@ -60,7 +60,7 @@ export const CommandPalette: React.FC = () => {
     window.dispatchEvent(
       new CustomEvent("abyss:theme-change", {
         detail: { darkMode: !isDark },
-      }),
+      })
     );
   }, []);
 
@@ -95,10 +95,7 @@ export const CommandPalette: React.FC = () => {
             className="w-full bg-transparent text-[13px] text-[rgba(var(--ui-fg),0.85)] placeholder:text-[rgba(var(--ui-fg),0.3)] outline-none border-b border-[rgba(var(--ui-fg),0.06)]"
             style={{ padding: "12px 16px" }}
           />
-          <Command.List
-            className="max-h-72 overflow-y-auto"
-            style={{ padding: "6px" }}
-          >
+          <Command.List className="max-h-72 overflow-y-auto" style={{ padding: "6px" }}>
             <Command.Empty className="text-[12px] text-[rgba(var(--ui-fg),0.35)] text-center py-6">
               No results found.
             </Command.Empty>
@@ -144,11 +141,7 @@ export const CommandPalette: React.FC = () => {
               <PaletteItem
                 icon={<Navigation size={14} />}
                 label="Reset Map Orientation"
-                onSelect={() =>
-                  run(() =>
-                    window.dispatchEvent(new CustomEvent("abyss:north-up")),
-                  )
-                }
+                onSelect={() => run(() => window.dispatchEvent(new CustomEvent("abyss:north-up")))}
               />
             </Command.Group>
 
@@ -178,31 +171,15 @@ export const CommandPalette: React.FC = () => {
                 label="Ctrl+K — Command Palette"
                 disabled
               />
-              <PaletteItem
-                icon={<Keyboard size={14} />}
-                label="S — Toggle Sessions"
-                disabled
-              />
-              <PaletteItem
-                icon={<Keyboard size={14} />}
-                label="Esc — Back to Live"
-                disabled
-              />
-              <PaletteItem
-                icon={<Keyboard size={14} />}
-                label="Ctrl+N — New Session"
-                disabled
-              />
+              <PaletteItem icon={<Keyboard size={14} />} label="S — Toggle Sessions" disabled />
+              <PaletteItem icon={<Keyboard size={14} />} label="Esc — Back to Live" disabled />
+              <PaletteItem icon={<Keyboard size={14} />} label="Ctrl+N — New Session" disabled />
               <PaletteItem
                 icon={<Keyboard size={14} />}
                 label="Space — Play/Pause (Playback)"
                 disabled
               />
-              <PaletteItem
-                icon={<Keyboard size={14} />}
-                label="←/→ — Seek (Playback)"
-                disabled
-              />
+              <PaletteItem icon={<Keyboard size={14} />} label="←/→ — Seek (Playback)" disabled />
             </Command.Group>
           </Command.List>
         </Command>

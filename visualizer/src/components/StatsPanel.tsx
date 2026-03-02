@@ -38,15 +38,13 @@ const Sparkline: React.FC<{
       const idx = Math.round(relX * (data.length - 1));
       setHoverIdx(Math.max(0, Math.min(data.length - 1, idx)));
     },
-    [data.length],
+    [data.length]
   );
 
   const handleMouseLeave = useCallback(() => setHoverIdx(null), []);
 
   if (data.length < 2)
-    return (
-      <div className="w-full h-9 block rounded-md bg-[rgba(var(--ui-fg),0.02)]" />
-    );
+    return <div className="w-full h-9 block rounded-md bg-[rgba(var(--ui-fg),0.02)]" />;
   const max = Math.max(...data, 1);
   const w = 260;
   const pts = data.map((v, i) => ({
@@ -119,12 +117,7 @@ const Sparkline: React.FC<{
         </>
       ) : (
         pts.length > 0 && (
-          <circle
-            cx={pts[pts.length - 1].x}
-            cy={pts[pts.length - 1].y}
-            r="2.5"
-            fill={color}
-          />
+          <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r="2.5" fill={color} />
         )
       )}
     </svg>
@@ -132,14 +125,7 @@ const Sparkline: React.FC<{
 };
 
 export const StatsPanel: React.FC = () => {
-  const {
-    derived,
-    frame,
-    flows,
-    throughputHistory,
-    latencyHistory,
-    connected,
-  } = useTelemetryStore(
+  const { derived, frame, flows, throughputHistory, latencyHistory, connected } = useTelemetryStore(
     useShallow((s) => ({
       derived: s.derived,
       frame: s.frame,
@@ -147,7 +133,7 @@ export const StatsPanel: React.FC = () => {
       throughputHistory: s.throughputHistory,
       latencyHistory: s.latencyHistory,
       connected: s.connected,
-    })),
+    }))
   );
 
   const [stableFlows, setStableFlows] = useState(flows);
@@ -217,9 +203,7 @@ export const StatsPanel: React.FC = () => {
           </div>
           <div className="font-mono text-lg font-bold text-[rgba(var(--ui-fg),0.8)] tabular-nums flex items-baseline gap-1">
             {derived.throughputMbps.toFixed(1)}
-            <span className="text-[11px] font-medium text-[rgba(var(--ui-fg),0.3)]">
-              Mbps
-            </span>
+            <span className="text-[11px] font-medium text-[rgba(var(--ui-fg),0.3)]">Mbps</span>
           </div>
         </section>
 
@@ -233,18 +217,11 @@ export const StatsPanel: React.FC = () => {
             </span>
           </div>
           <div className="mb-1.5">
-            <Sparkline
-              data={latencyHistory}
-              color="#ff7a45"
-              height={32}
-              unit="ms"
-            />
+            <Sparkline data={latencyHistory} color="#ff7a45" height={32} unit="ms" />
           </div>
           <div className="font-mono text-lg font-bold text-[rgba(var(--ui-fg),0.8)] tabular-nums flex items-baseline gap-1">
             {frame?.net.latencyMs.toFixed(0) ?? "—"}
-            <span className="text-[11px] font-medium text-[rgba(var(--ui-fg),0.3)]">
-              ms
-            </span>
+            <span className="text-[11px] font-medium text-[rgba(var(--ui-fg),0.3)]">ms</span>
           </div>
         </section>
 
@@ -264,8 +241,7 @@ export const StatsPanel: React.FC = () => {
               </span>
             ) : (
               derived.topProtocols.map((p) => {
-                const total =
-                  derived.topProtocols.reduce((s, x) => s + x.count, 0) || 1;
+                const total = derived.topProtocols.reduce((s, x) => s + x.count, 0) || 1;
                 const pct = (p.count / total) * 100;
                 const cls = p.protocol.toLowerCase().replace(/[^a-z]/g, "");
                 const fillColor = PROTO_COLOR[cls] ?? "bg-[#475569]";
@@ -287,10 +263,7 @@ export const StatsPanel: React.FC = () => {
                         </span>
                       </div>
                     </TooltipTrigger>
-                    <TooltipContent
-                      side="left"
-                      className="text-[10px] font-mono"
-                    >
+                    <TooltipContent side="left" className="text-[10px] font-mono">
                       {p.protocol}: {p.count} flows · {pct.toFixed(1)}%
                     </TooltipContent>
                   </Tooltip>
@@ -324,9 +297,7 @@ export const StatsPanel: React.FC = () => {
                   className="flex justify-between items-center pt-1 pb-1 pl-1.5 pr-1.5 rounded-md transition-[background] duration-150 hover:bg-[rgba(var(--ui-fg),0.03)]"
                 >
                   <div className="flex items-center gap-1.75">
-                    <span className="text-[13px] leading-none">
-                      {countryFlag(c.country)}
-                    </span>
+                    <span className="text-[13px] leading-none">{countryFlag(c.country)}</span>
                     <span className="text-[11px] font-medium text-[rgba(var(--ui-fg),0.5)]">
                       {c.country}
                     </span>

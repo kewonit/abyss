@@ -22,7 +22,7 @@ import { Skeleton } from "./ui/skeleton";
 
 /** Group sessions by relative date: Today, Yesterday, This Week, Older */
 function groupSessionsByDate(
-  sessions: SessionInfo[],
+  sessions: SessionInfo[]
 ): { label: string; sessions: SessionInfo[] }[] {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -84,9 +84,7 @@ export const SessionDrawer: React.FC = () => {
       setError(null);
       try {
         const q = query ?? searchQuery;
-        const list = q.trim()
-          ? await searchSessions(q.trim(), 50)
-          : await listSessions(50, 0);
+        const list = q.trim() ? await searchSessions(q.trim(), 50) : await listSessions(50, 0);
         setSessions(list);
 
         // Sync recording state with backend
@@ -101,7 +99,7 @@ export const SessionDrawer: React.FC = () => {
         setLoading(false);
       }
     },
-    [setRecording, searchQuery],
+    [setRecording, searchQuery]
   );
 
   // Fetch sessions when drawer opens
@@ -174,11 +172,7 @@ export const SessionDrawer: React.FC = () => {
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         setFocusedIdx((prev) => Math.max(prev - 1, 0));
-      } else if (
-        e.key === "Enter" &&
-        focusedIdx >= 0 &&
-        focusedIdx < sessions.length
-      ) {
+      } else if (e.key === "Enter" && focusedIdx >= 0 && focusedIdx < sessions.length) {
         e.preventDefault();
         handleSelectSession(sessions[focusedIdx]);
       } else if (e.key === "Home") {
@@ -189,7 +183,7 @@ export const SessionDrawer: React.FC = () => {
         setFocusedIdx(sessions.length - 1);
       }
     },
-    [sessions, focusedIdx],
+    [sessions, focusedIdx]
   );
 
   // Scroll focused item into view
@@ -231,10 +225,7 @@ export const SessionDrawer: React.FC = () => {
           className="flex items-center justify-between border-b border-[rgba(var(--ui-fg),0.05)] shrink-0"
         >
           <div className="flex items-center gap-2 min-w-0">
-            <Clock
-              size={15}
-              className="text-[rgba(var(--ui-fg),0.4)] shrink-0"
-            />
+            <Clock size={15} className="text-[rgba(var(--ui-fg),0.4)] shrink-0" />
             <span className="text-[14px] font-semibold tracking-[0.2px] text-[rgba(var(--ui-fg),0.85)] shrink-0">
               Sessions
             </span>
@@ -300,10 +291,7 @@ export const SessionDrawer: React.FC = () => {
         </div>
 
         {/* Session list */}
-        <ScrollArea
-          className="flex-1 overflow-x-hidden"
-          style={{ padding: "8px 20px 8px 14px" }}
-        >
+        <ScrollArea className="flex-1 overflow-x-hidden" style={{ padding: "8px 20px 8px 14px" }}>
           {error && (
             <div
               className="flex items-center gap-2 rounded-lg bg-[rgba(255,77,106,0.08)] border border-[rgba(255,77,106,0.2)] mb-2"
@@ -316,10 +304,7 @@ export const SessionDrawer: React.FC = () => {
           {loading && sessions.length === 0 ? (
             <div className="flex flex-col gap-2 p-1">
               {Array.from({ length: 4 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-3 p-2.5 rounded-lg"
-                >
+                <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg">
                   <Skeleton className="h-7 w-7 rounded-full shrink-0" />
                   <div className="flex-1 space-y-1.5">
                     <Skeleton className="h-3.5 w-3/4" />
@@ -332,9 +317,7 @@ export const SessionDrawer: React.FC = () => {
             <div className="flex flex-col items-center justify-center h-32 gap-2">
               <Clock size={20} className="text-[rgba(var(--ui-fg),0.15)]" />
               <span className="text-[11px] text-[rgba(var(--ui-fg),0.3)]">
-                {searchQuery
-                  ? "No matching sessions"
-                  : "No sessions recorded yet"}
+                {searchQuery ? "No matching sessions" : "No sessions recorded yet"}
               </span>
             </div>
           ) : (
@@ -386,9 +369,7 @@ export const SessionDrawer: React.FC = () => {
             </span>
             {dbSizeMb !== null && (
               <span className="text-[11px] text-[rgba(var(--ui-fg),0.3)] font-mono tabular-nums">
-                {dbSizeMb < 1
-                  ? `${Math.round(dbSizeMb * 1024)} KB`
-                  : `${dbSizeMb.toFixed(1)} MB`}
+                {dbSizeMb < 1 ? `${Math.round(dbSizeMb * 1024)} KB` : `${dbSizeMb.toFixed(1)} MB`}
               </span>
             )}
           </div>
@@ -448,10 +429,7 @@ const SessionCard: React.FC<SessionCardProps> = ({
                 Crashed
               </Badge>
             ) : (
-              <Badge
-                variant="success"
-                className="text-[9px] px-1.5 py-0 opacity-60"
-              >
+              <Badge variant="success" className="text-[9px] px-1.5 py-0 opacity-60">
                 Done
               </Badge>
             )}
@@ -474,15 +452,11 @@ const SessionCard: React.FC<SessionCardProps> = ({
             <span className="text-[11px] text-[rgba(var(--ui-fg),0.3)]">
               {formatDuration(session.durationSecs)}
             </span>
-            <span className="text-[11px] text-[rgba(var(--ui-fg),0.15)]">
-              ·
-            </span>
+            <span className="text-[11px] text-[rgba(var(--ui-fg),0.15)]">·</span>
             <span className="text-[11px] text-[rgba(var(--ui-fg),0.3)]">
               {formatDataSize(totalBytes)}
             </span>
-            <span className="text-[11px] text-[rgba(var(--ui-fg),0.15)]">
-              ·
-            </span>
+            <span className="text-[11px] text-[rgba(var(--ui-fg),0.15)]">·</span>
             <span className="text-[11px] text-[rgba(var(--ui-fg),0.3)]">
               {formatNumber(session.totalFlows)} flows
             </span>
@@ -507,8 +481,8 @@ const SessionCard: React.FC<SessionCardProps> = ({
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete session?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Delete &quot;{session.name}&quot;? This will permanently
-                    remove this session and all its recorded data.
+                    Delete &quot;{session.name}&quot;? This will permanently remove this session and
+                    all its recorded data.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

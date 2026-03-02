@@ -189,10 +189,7 @@ export interface PlaybackData {
 
 // ─── Tauri command wrappers ─────────────────────────────────────────────────
 
-export async function listSessions(
-  limit = 50,
-  offset = 0,
-): Promise<SessionInfo[]> {
+export async function listSessions(limit = 50, offset = 0): Promise<SessionInfo[]> {
   return invoke<SessionInfo[]>("cmd_list_sessions", { limit, offset });
 }
 
@@ -206,7 +203,7 @@ export async function deleteSession(id: string): Promise<boolean> {
 
 export async function getSessionFrames(
   sessionId: string,
-  opts?: { startT?: number; endT?: number; maxPoints?: number },
+  opts?: { startT?: number; endT?: number; maxPoints?: number }
 ): Promise<FrameRecord[]> {
   return invoke<FrameRecord[]>("cmd_get_session_frames", {
     sessionId,
@@ -222,7 +219,7 @@ export async function getSessionFlows(
     processFilter?: string;
     countryFilter?: string;
     limit?: number;
-  },
+  }
 ): Promise<FlowSnapshotRecord[]> {
   return invoke<FlowSnapshotRecord[]>("cmd_get_session_flows", {
     sessionId,
@@ -234,7 +231,7 @@ export async function getSessionFlows(
 
 export async function getSessionDestinations(
   sessionId: string,
-  opts?: { sortBy?: "bytes" | "connections" | "first_seen"; limit?: number },
+  opts?: { sortBy?: "bytes" | "connections" | "first_seen"; limit?: number }
 ): Promise<DestinationRecord[]> {
   return invoke<DestinationRecord[]>("cmd_get_session_destinations", {
     sessionId,
@@ -245,7 +242,7 @@ export async function getSessionDestinations(
 
 export async function getProcessUsage(
   sessionId: string,
-  opts?: { processName?: string; limit?: number },
+  opts?: { processName?: string; limit?: number }
 ): Promise<ProcessUsageRecord[]> {
   return invoke<ProcessUsageRecord[]>("cmd_get_process_usage", {
     sessionId,
@@ -262,10 +259,7 @@ export async function getDailyUsage(rangeDays = 0): Promise<DailyUsage[]> {
   return invoke<DailyUsage[]>("cmd_get_daily_usage", { rangeDays });
 }
 
-export async function getTopDestinations(
-  rangeDays = 0,
-  limit = 20,
-): Promise<TopDestination[]> {
+export async function getTopDestinations(rangeDays = 0, limit = 20): Promise<TopDestination[]> {
   return invoke<TopDestination[]>("cmd_get_top_destinations", {
     rangeDays,
     limit,
@@ -276,15 +270,13 @@ export async function getTopApps(rangeDays = 0, limit = 20): Promise<TopApp[]> {
   return invoke<TopApp[]>("cmd_get_top_apps", { rangeDays, limit });
 }
 
-export async function getSessionInsights(
-  sessionId: string,
-): Promise<SessionInsights> {
+export async function getSessionInsights(sessionId: string): Promise<SessionInsights> {
   return invoke<SessionInsights>("cmd_get_session_insights", { sessionId });
 }
 
 export async function updateSessionMeta(
   id: string,
-  meta: { name?: string; notes?: string; tags?: string },
+  meta: { name?: string; notes?: string; tags?: string }
 ): Promise<void> {
   return invoke<void>("cmd_update_session_meta", {
     id,
@@ -326,33 +318,21 @@ export async function openDataFolder(): Promise<void> {
   return invoke<void>("cmd_open_data_folder");
 }
 
-export async function exportSessionCsv(
-  sessionId: string,
-  path: string,
-): Promise<string> {
+export async function exportSessionCsv(sessionId: string, path: string): Promise<string> {
   return invoke<string>("cmd_export_session_csv", { sessionId, path });
 }
 
-export async function exportSessionJson(
-  sessionId: string,
-  path: string,
-): Promise<string> {
+export async function exportSessionJson(sessionId: string, path: string): Promise<string> {
   return invoke<string>("cmd_export_session_json", { sessionId, path });
 }
 
-export async function getPlaybackData(
-  sessionId: string,
-): Promise<PlaybackData> {
+export async function getPlaybackData(sessionId: string): Promise<PlaybackData> {
   return invoke<PlaybackData>("cmd_get_playback_data", { sessionId });
 }
 
 // ─── Utility helpers (re-exported from lib/utils for backward compatibility) ─
 
-export {
-  formatDataSize as formatBytes,
-  formatDuration,
-  formatTimestamp,
-} from "../lib/utils";
+export { formatDataSize as formatBytes, formatDuration, formatTimestamp } from "../lib/utils";
 
 // ─── Tier 6: Baseline, Anomaly, Health Score, Tagging/Search ────────────────
 
@@ -407,19 +387,13 @@ export async function getHealthScore(hours?: number): Promise<HealthScore> {
   return invoke<HealthScore>("cmd_get_health_score", { hours: hours ?? null });
 }
 
-export async function searchSessions(
-  query: string,
-  limit?: number,
-): Promise<SessionInfo[]> {
+export async function searchSessions(query: string, limit?: number): Promise<SessionInfo[]> {
   return invoke<SessionInfo[]>("cmd_search_sessions", {
     query,
     limit: limit ?? null,
   });
 }
 
-export async function updateSessionTags(
-  sessionId: string,
-  tags: string[],
-): Promise<void> {
+export async function updateSessionTags(sessionId: string, tags: string[]): Promise<void> {
   return invoke<void>("cmd_update_session_tags", { sessionId, tags });
 }

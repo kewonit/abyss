@@ -47,8 +47,8 @@ export class ErrorBoundary extends React.Component<Props, State> {
               Something went wrong
             </h2>
             <p className="text-[13px] text-[rgba(var(--ui-fg),0.45)] leading-relaxed">
-              An unexpected error occurred in the application. You can try
-              reloading or dismissing this error.
+              An unexpected error occurred in the application. You can try reloading or dismissing
+              this error.
             </p>
             {this.state.error && (
               <pre

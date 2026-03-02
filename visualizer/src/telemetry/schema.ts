@@ -99,8 +99,7 @@ export function computeDerivedMetrics(frame: TelemetryFrame): DerivedMetrics {
   _protoPool[5].count = frame.proto.icmp;
   const topProtocols: Array<{ protocol: string; count: number }> = [];
   for (const p of _protoPool) {
-    if (p.count > 0)
-      topProtocols.push({ protocol: p.protocol, count: p.count });
+    if (p.count > 0) topProtocols.push({ protocol: p.protocol, count: p.count });
   }
   topProtocols.sort((a, b) => b.count - a.count);
 

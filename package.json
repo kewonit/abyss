@@ -8,7 +8,10 @@
     "build": "cd tauri-host/src-tauri && cargo tauri build",
     "build:release": "powershell -ExecutionPolicy Bypass -File scripts/build-release.ps1",
     "dev:vite": "cd visualizer && npm run dev",
-    "install:all": "cd visualizer && npm install"
+    "install:all": "cd visualizer && npm install",
+    "check:monitor": "node --check monitor.mjs",
+    "check:visualizer": "npm --prefix visualizer run format:check && npm --prefix visualizer run lint && npm --prefix visualizer run typecheck && npm --prefix visualizer run build",
+    "check": "npm run check:monitor && npm run check:visualizer"
   },
   "keywords": [
     "network",

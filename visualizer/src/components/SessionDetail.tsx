@@ -1,10 +1,4 @@
-import React, {
-  useEffect,
-  useState,
-  useMemo,
-  useCallback,
-  useRef,
-} from "react";
+import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import {
   ArrowLeft,
   Activity,
@@ -212,7 +206,7 @@ export const SessionDetail: React.FC = () => {
         setExporting(false);
       }
     },
-    [selectedSessionId, session],
+    [selectedSessionId, session]
   );
 
   const handlePlay = useCallback(async () => {
@@ -234,15 +228,10 @@ export const SessionDetail: React.FC = () => {
       <div className="w-full h-full bg-[rgba(var(--ui-bg),0.95)]">
         {error ? (
           <div className="flex items-center justify-center w-full h-full">
-            <span className="text-[13px] text-(--accent-red)">
-              Error: {error}
-            </span>
+            <span className="text-[13px] text-(--accent-red)">Error: {error}</span>
           </div>
         ) : (
-          <div
-            className="max-w-5xl mx-auto"
-            style={{ padding: "60px 24px 40px" }}
-          >
+          <div className="max-w-5xl mx-auto" style={{ padding: "60px 24px 40px" }}>
             <Skeleton className="h-5 w-24 mb-6" />
             <Skeleton className="h-7 w-64 mb-2" />
             <Skeleton className="h-4 w-40 mb-8" />
@@ -388,11 +377,7 @@ export const SessionDetail: React.FC = () => {
         <SummaryCards session={session} />
 
         {/* Tab bar */}
-        <Tabs
-          value={tab}
-          onValueChange={(v) => setTab(v as Tab)}
-          className="mt-8 mb-6"
-        >
+        <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="mt-8 mb-6">
           <TabsList className="bg-transparent p-0 gap-0 border-b border-[rgba(var(--ui-fg),0.06)] rounded-none w-full justify-start">
             <TabsTrigger
               value="overview"
@@ -422,10 +407,7 @@ export const SessionDetail: React.FC = () => {
         {tab === "overview" && (
           <div className="tab-content-enter" key="overview">
             {/* Section navigation sidebar TOC */}
-            <SectionToc
-              hasInsights={!!insights}
-              hasAnomalies={anomalies.length > 0}
-            />
+            <SectionToc hasInsights={!!insights} hasAnomalies={anomalies.length > 0} />
             <OverviewTab frames={frames} flows={flows} />
             {insights && <InsightsPanel insights={insights} />}
             {anomalies.length > 0 && <AnomalyPanel anomalies={anomalies} />}
@@ -435,12 +417,7 @@ export const SessionDetail: React.FC = () => {
               setTagInput={setTagInput}
               onAdd={(tag) => {
                 const trimmed = tag.slice(0, 50); // max 50 chars per tag
-                if (
-                  !selectedSessionId ||
-                  tags.includes(trimmed) ||
-                  tags.length >= 20
-                )
-                  return;
+                if (!selectedSessionId || tags.includes(trimmed) || tags.length >= 20) return;
                 const next = [...tags, trimmed];
                 setTags(next);
                 updateSessionTags(selectedSessionId, next).catch(() => {
@@ -476,20 +453,12 @@ export const SessionDetail: React.FC = () => {
 // ─── Summary cards ────────────────────────────────────────────────────────
 
 const SummaryCards: React.FC<{ session: SessionInfo }> = ({ session }) => {
-  const totalUp = Number.isFinite(session.totalBytesUp)
-    ? session.totalBytesUp
-    : 0;
-  const totalDown = Number.isFinite(session.totalBytesDown)
-    ? session.totalBytesDown
-    : 0;
+  const totalUp = Number.isFinite(session.totalBytesUp) ? session.totalBytesUp : 0;
+  const totalDown = Number.isFinite(session.totalBytesDown) ? session.totalBytesDown : 0;
   const totalBytes = totalUp + totalDown;
   const peakBps = Number.isFinite(session.peakBps) ? session.peakBps : 0;
-  const avgLat = Number.isFinite(session.avgLatencyMs)
-    ? session.avgLatencyMs
-    : 0;
-  const totalFlows = Number.isFinite(session.totalFlows)
-    ? session.totalFlows
-    : 0;
+  const avgLat = Number.isFinite(session.avgLatencyMs) ? session.avgLatencyMs : 0;
+  const totalFlows = Number.isFinite(session.totalFlows) ? session.totalFlows : 0;
   const peakFlows = Number.isFinite(session.peakFlows) ? session.peakFlows : 0;
 
   const cards = [
@@ -547,9 +516,7 @@ const OverviewTab: React.FC<{
   if (frames.length === 0) {
     return (
       <div className="flex items-center justify-center h-40">
-        <span className="text-[11px] text-[rgba(var(--ui-fg),0.3)]">
-          No frame data recorded
-        </span>
+        <span className="text-[11px] text-[rgba(var(--ui-fg),0.3)]">No frame data recorded</span>
       </div>
     );
   }
@@ -590,7 +557,7 @@ const OverviewTab: React.FC<{
         width: 1,
       },
     ],
-    [],
+    []
   );
 
   // ── Latency chart data ──
@@ -607,7 +574,7 @@ const OverviewTab: React.FC<{
 
   const latencySeries: SeriesConfig[] = useMemo(
     () => [{ label: "Latency", color: "amber", unit: "ms", fill: true }],
-    [],
+    []
   );
 
   // ── Active flows chart data ──
@@ -624,7 +591,7 @@ const OverviewTab: React.FC<{
 
   const flowsSeries: SeriesConfig[] = useMemo(
     () => [{ label: "Active Flows", color: "green", unit: "", fill: true }],
-    [],
+    []
   );
 
   // ── Protocol distribution ──
@@ -668,9 +635,7 @@ const OverviewTab: React.FC<{
           data={throughputData}
           series={throughputSeries}
           height={220}
-          yFormat={(v) =>
-            v >= 1000 ? `${(v / 1000).toFixed(1)}G` : `${v.toFixed(1)}`
-          }
+          yFormat={(v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}G` : `${v.toFixed(1)}`)}
         />
       </ChartCard>
 
@@ -680,9 +645,7 @@ const OverviewTab: React.FC<{
           data={latencyData}
           series={latencySeries}
           height={160}
-          yFormat={(v) =>
-            v >= 1000 ? `${(v / 1000).toFixed(1)}s` : `${v.toFixed(0)}ms`
-          }
+          yFormat={(v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}s` : `${v.toFixed(0)}ms`)}
         />
       </ChartCard>
 
@@ -692,10 +655,7 @@ const OverviewTab: React.FC<{
       </ChartCard>
 
       {/* Protocol & Service breakdown side by side */}
-      <div
-        id="section-protocols"
-        className="grid grid-cols-1 md:grid-cols-2 gap-6"
-      >
+      <div id="section-protocols" className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Protocol distribution */}
         <div
           className="bg-[rgba(var(--ui-fg),0.02)] border border-[rgba(var(--ui-fg),0.05)] rounded-xl"
@@ -708,9 +668,7 @@ const OverviewTab: React.FC<{
             </span>
           </div>
           {protocolBreakdown.length === 0 ? (
-            <span className="text-[11px] text-[rgba(var(--ui-fg),0.2)]">
-              No data
-            </span>
+            <span className="text-[11px] text-[rgba(var(--ui-fg),0.2)]">No data</span>
           ) : (
             <div className="flex flex-col gap-2">
               {protocolBreakdown.map((p, i) => (
@@ -749,9 +707,7 @@ const OverviewTab: React.FC<{
             </span>
           </div>
           {serviceBreakdown.length === 0 ? (
-            <span className="text-[11px] text-[rgba(var(--ui-fg),0.2)]">
-              No data
-            </span>
+            <span className="text-[11px] text-[rgba(var(--ui-fg),0.2)]">No data</span>
           ) : (
             <div className="flex flex-col gap-2">
               {serviceBreakdown.map((s, i) => (
@@ -803,15 +759,11 @@ const ChartCard: React.FC<{
 
 // ─── Destinations tab ───────────────────────────────────────────────────
 
-const DestinationsTab: React.FC<{ destinations: DestinationRecord[] }> = ({
-  destinations,
-}) => {
+const DestinationsTab: React.FC<{ destinations: DestinationRecord[] }> = ({ destinations }) => {
   if (destinations.length === 0) {
     return (
       <div className="flex items-center justify-center h-40">
-        <span className="text-[11px] text-[rgba(var(--ui-fg),0.3)]">
-          No destination data
-        </span>
+        <span className="text-[11px] text-[rgba(var(--ui-fg),0.3)]">No destination data</span>
       </div>
     );
   }
@@ -870,9 +822,7 @@ const DestinationsTab: React.FC<{ destinations: DestinationRecord[] }> = ({
 
 // ─── Processes tab ──────────────────────────────────────────────────────
 
-const ProcessesTab: React.FC<{ processes: ProcessUsageRecord[] }> = ({
-  processes,
-}) => {
+const ProcessesTab: React.FC<{ processes: ProcessUsageRecord[] }> = ({ processes }) => {
   // Aggregate by process name (records come in time-series, we want summary)
   const aggregated = useMemo(() => {
     const map = new Map<
@@ -929,10 +879,7 @@ const ProcessesTab: React.FC<{ processes: ProcessUsageRecord[] }> = ({
         timeMap = new Map();
         byTime.set(p.timestamp, timeMap);
       }
-      timeMap.set(
-        p.processName,
-        (timeMap.get(p.processName) ?? 0) + p.bytesUp + p.bytesDown,
-      );
+      timeMap.set(p.processName, (timeMap.get(p.processName) ?? 0) + p.bytesUp + p.bytesDown);
     }
 
     const sortedTimes = Array.from(byTime.keys()).sort();
@@ -940,9 +887,7 @@ const ProcessesTab: React.FC<{ processes: ProcessUsageRecord[] }> = ({
 
     // Build uPlot-compatible data
     const ts = new Float64Array(sortedTimes.length);
-    const series: Float64Array[] = topNames.map(
-      () => new Float64Array(sortedTimes.length),
-    );
+    const series: Float64Array[] = topNames.map(() => new Float64Array(sortedTimes.length));
 
     const t0raw = new Date(sortedTimes[0]).getTime();
     const t0 = Number.isFinite(t0raw) ? t0raw / 1000 : 0;
@@ -958,13 +903,7 @@ const ProcessesTab: React.FC<{ processes: ProcessUsageRecord[] }> = ({
 
     const data: uPlot.AlignedData = [ts, ...series];
 
-    const seriesColors = [
-      "cyan",
-      "orange",
-      "purple",
-      "green",
-      "amber",
-    ] as const;
+    const seriesColors = ["cyan", "orange", "purple", "green", "amber"] as const;
     const seriesConfig: SeriesConfig[] = topNames.map((name, i) => ({
       label: name.replace(/\.exe$/i, ""),
       color: seriesColors[i % seriesColors.length],
@@ -979,9 +918,7 @@ const ProcessesTab: React.FC<{ processes: ProcessUsageRecord[] }> = ({
   if (aggregated.length === 0) {
     return (
       <div className="flex items-center justify-center h-40">
-        <span className="text-[11px] text-[rgba(var(--ui-fg),0.3)]">
-          No process data recorded
-        </span>
+        <span className="text-[11px] text-[rgba(var(--ui-fg),0.3)]">No process data recorded</span>
       </div>
     );
   }
@@ -997,9 +934,7 @@ const ProcessesTab: React.FC<{ processes: ProcessUsageRecord[] }> = ({
             data={processTimeline.data}
             series={processTimeline.series}
             height={180}
-            yFormat={(v) =>
-              v >= 1024 ? `${(v / 1024).toFixed(1)} GB` : `${v.toFixed(0)} MB`
-            }
+            yFormat={(v) => (v >= 1024 ? `${(v / 1024).toFixed(1)} GB` : `${v.toFixed(0)} MB`)}
           />
         </ChartCard>
       )}
@@ -1071,8 +1006,7 @@ const SectionToc: React.FC<{
   const sections = useMemo(() => {
     const list = [...TOC_SECTIONS] as { id: string; label: string }[];
     if (hasInsights) list.push({ id: "section-insights", label: "Insights" });
-    if (hasAnomalies)
-      list.push({ id: "section-anomalies", label: "Anomalies" });
+    if (hasAnomalies) list.push({ id: "section-anomalies", label: "Anomalies" });
     list.push({ id: "section-tags", label: "Tags" });
     return list;
   }, [hasInsights, hasAnomalies]);
@@ -1088,7 +1022,7 @@ const SectionToc: React.FC<{
           }
         }
       },
-      { rootMargin: "-80px 0px -60% 0px", threshold: 0.1 },
+      { rootMargin: "-80px 0px -60% 0px", threshold: 0.1 }
     );
 
     for (const s of sections) {
@@ -1128,13 +1062,9 @@ const SectionToc: React.FC<{
 
 // ─── Insights Panel ──────────────────────────────────────────────────────────
 
-const InsightsPanel: React.FC<{ insights: SessionInsights }> = ({
-  insights,
-}) => (
+const InsightsPanel: React.FC<{ insights: SessionInsights }> = ({ insights }) => (
   <div id="section-insights" className="mt-6 scroll-mt-20">
-    <h3 className="text-[13px] font-medium text-[rgba(var(--ui-fg),0.6)] mb-3">
-      Session Insights
-    </h3>
+    <h3 className="text-[13px] font-medium text-[rgba(var(--ui-fg),0.6)] mb-3">Session Insights</h3>
     <div
       className="rounded-xl border border-[rgba(var(--ui-fg),0.06)] bg-[rgba(var(--ui-fg),0.02)] space-y-3"
       style={{ padding: "16px 18px" }}
@@ -1263,15 +1193,12 @@ const AnomalyPanel: React.FC<{ anomalies: Anomaly[] }> = ({ anomalies }) => (
           <span
             className="inline-block w-2 h-2 rounded-full mt-1 shrink-0"
             style={{
-              backgroundColor:
-                severityColor[a.severity] || "var(--accent-amber)",
+              backgroundColor: severityColor[a.severity] || "var(--accent-amber)",
             }}
           />
           <div className="flex flex-col gap-0.5 min-w-0">
             <span className="text-[11px] font-semibold text-[rgba(var(--ui-fg),0.75)]">
-              {a.anomalyType
-                .replace(/_/g, " ")
-                .replace(/\b\w/g, (c) => c.toUpperCase())}
+              {a.anomalyType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
               <span className="ml-1.5 text-[10px] font-normal text-[rgba(var(--ui-fg),0.35)]">
                 {a.severity}
                 {Number.isFinite(a.deviationSigmas) && a.deviationSigmas > 0
@@ -1279,9 +1206,7 @@ const AnomalyPanel: React.FC<{ anomalies: Anomaly[] }> = ({ anomalies }) => (
                   : ""}
               </span>
             </span>
-            <span className="text-[11px] text-[rgba(var(--ui-fg),0.5)] truncate">
-              {a.message}
-            </span>
+            <span className="text-[11px] text-[rgba(var(--ui-fg),0.5)] truncate">{a.message}</span>
           </div>
         </div>
       ))}
@@ -1300,11 +1225,7 @@ const TagsEditor: React.FC<{
 }> = ({ tags, tagInput, setTagInput, onAdd, onRemove }) => {
   const TAG_MAX = 50;
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (
-      e.key === "Enter" &&
-      tagInput.trim() &&
-      tagInput.trim().length <= TAG_MAX
-    ) {
+    if (e.key === "Enter" && tagInput.trim() && tagInput.trim().length <= TAG_MAX) {
       onAdd(tagInput.trim());
       setTagInput("");
     }

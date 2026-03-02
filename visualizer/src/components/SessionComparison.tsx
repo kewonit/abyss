@@ -127,10 +127,7 @@ export const SessionComparison: React.FC = () => {
   if (loading) {
     return (
       <div className="w-full h-full bg-[rgba(var(--ui-bg),0.95)]">
-        <div
-          className="max-w-5xl mx-auto"
-          style={{ padding: "96px 48px 56px" }}
-        >
+        <div className="max-w-5xl mx-auto" style={{ padding: "96px 48px 56px" }}>
           <Skeleton className="h-5 w-32 mb-4" />
           <Skeleton className="h-7 w-56 mb-8" />
           <div className="grid grid-cols-2 gap-4 mb-8">
@@ -147,9 +144,7 @@ export const SessionComparison: React.FC = () => {
   if (error || !dataA || !dataB) {
     return (
       <div className="flex items-center justify-center w-full h-full bg-[rgba(var(--ui-bg),0.95)]">
-        <span className="text-[13px] text-(--accent-red)">
-          {error || "Missing session data"}
-        </span>
+        <span className="text-[13px] text-(--accent-red)">{error || "Missing session data"}</span>
       </div>
     );
   }
@@ -181,9 +176,7 @@ export const SessionComparison: React.FC = () => {
               variant="ghost"
               size="sm"
               className="gap-1.5 text-[11px] text-[rgba(var(--ui-fg),0.4)] hover:text-[rgba(var(--ui-fg),0.7)]"
-              onClick={() =>
-                startComparison(comparisonIds[1], comparisonIds[0])
-              }
+              onClick={() => startComparison(comparisonIds[1], comparisonIds[0])}
             >
               <ArrowLeftRight size={12} />
               Swap A/B
@@ -193,16 +186,8 @@ export const SessionComparison: React.FC = () => {
 
         {/* Side-by-side summary cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-          <SessionCard
-            session={dataA.info}
-            label="Session A"
-            color="var(--accent-cyan)"
-          />
-          <SessionCard
-            session={dataB.info}
-            label="Session B"
-            color="var(--accent-orange)"
-          />
+          <SessionCard session={dataA.info} label="Session A" color="var(--accent-cyan)" />
+          <SessionCard session={dataB.info} label="Session B" color="var(--accent-orange)" />
         </div>
 
         {/* Comparison summary */}
@@ -235,55 +220,37 @@ const SessionCard: React.FC<{
         borderColor: `color-mix(in srgb, ${color}, transparent 70%)`,
       }}
     >
-      <div
-        className="text-[10px] uppercase tracking-wider font-semibold mb-2"
-        style={{ color }}
-      >
+      <div className="text-[10px] uppercase tracking-wider font-semibold mb-2" style={{ color }}>
         {label}
       </div>
       <div className="text-[14px] font-medium text-[rgba(var(--ui-fg),0.75)] mb-1">
         {session.name || "Unnamed Session"}
       </div>
       <div className="text-[11px] text-[rgba(var(--ui-fg),0.35)] mb-3">
-        {formatTimestamp(session.startedAt)} ·{" "}
-        {formatDuration(session.durationSecs)}
+        {formatTimestamp(session.startedAt)} · {formatDuration(session.durationSecs)}
       </div>
       <div className="grid grid-cols-2 gap-2">
         <MiniMetric label="Total Data" value={formatDataSize(totalBytes)} />
-        <MiniMetric
-          label="Peak"
-          value={formatCompact(session.peakBps * 8, "bps")}
-        />
-        <MiniMetric
-          label="Avg Latency"
-          value={`${(session.avgLatencyMs || 0).toFixed(0)}ms`}
-        />
+        <MiniMetric label="Peak" value={formatCompact(session.peakBps * 8, "bps")} />
+        <MiniMetric label="Avg Latency" value={`${(session.avgLatencyMs || 0).toFixed(0)}ms`} />
         <MiniMetric label="Flows" value={String(session.totalFlows || 0)} />
       </div>
     </div>
   );
 };
 
-const MiniMetric: React.FC<{ label: string; value: string }> = ({
-  label,
-  value,
-}) => (
+const MiniMetric: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <div>
     <div className="text-[9px] text-[rgba(var(--ui-fg),0.25)] uppercase tracking-wider">
       {label}
     </div>
-    <div className="text-[12px] text-[rgba(var(--ui-fg),0.6)] font-mono">
-      {value}
-    </div>
+    <div className="text-[12px] text-[rgba(var(--ui-fg),0.6)] font-mono">{value}</div>
   </div>
 );
 
 // ─── Comparison Summary ─────────────────────────────────────────────────────
 
-const ComparisonSummary: React.FC<{ a: SessionData; b: SessionData }> = ({
-  a,
-  b,
-}) => {
+const ComparisonSummary: React.FC<{ a: SessionData; b: SessionData }> = ({ a, b }) => {
   const totalA = (a.info.totalBytesUp || 0) + (a.info.totalBytesDown || 0);
   const totalB = (b.info.totalBytesUp || 0) + (b.info.totalBytesDown || 0);
   const latA = a.info.avgLatencyMs || 0;
@@ -347,12 +314,8 @@ const ComparisonSummary: React.FC<{ a: SessionData; b: SessionData }> = ({
             style={{ padding: "8px 14px" }}
           >
             <span className="text-[rgba(var(--ui-fg),0.5)]">{r.label}</span>
-            <span className="text-center font-mono text-[rgba(var(--ui-fg),0.6)]">
-              {r.valA}
-            </span>
-            <span className="text-center font-mono text-[rgba(var(--ui-fg),0.6)]">
-              {r.valB}
-            </span>
+            <span className="text-center font-mono text-[rgba(var(--ui-fg),0.6)]">{r.valA}</span>
+            <span className="text-center font-mono text-[rgba(var(--ui-fg),0.6)]">{r.valB}</span>
             <span className="text-right flex items-center justify-end gap-1">
               <DiffBadge diff={r.diff} />
             </span>
@@ -385,10 +348,7 @@ const DiffBadge: React.FC<{ diff: number }> = ({ diff }) => {
   const color = isUp ? "var(--accent-orange)" : "var(--accent-cyan)";
 
   return (
-    <span
-      className="flex items-center gap-0.5 text-[11px] font-mono"
-      style={{ color }}
-    >
+    <span className="flex items-center gap-0.5 text-[11px] font-mono" style={{ color }}>
       <Icon size={10} />
       {isUp ? "+" : ""}
       {diff.toFixed(0)}%
@@ -398,15 +358,11 @@ const DiffBadge: React.FC<{ diff: number }> = ({ diff }) => {
 
 // ─── Throughput Comparison Chart ────────────────────────────────────────────
 
-const ThroughputComparison: React.FC<{ a: SessionData; b: SessionData }> = ({
-  a,
-  b,
-}) => {
+const ThroughputComparison: React.FC<{ a: SessionData; b: SessionData }> = ({ a, b }) => {
   const chartData = useMemo(() => {
     // Normalize both sessions to a 0→1 timeline so they overlay regardless of actual timestamps
     const normalizeFrames = (frames: FrameRecord[]) => {
-      if (frames.length === 0)
-        return { times: [] as number[], bps: [] as number[] };
+      if (frames.length === 0) return { times: [] as number[], bps: [] as number[] };
       const tMin = frames[0].t;
       const tMax = frames[frames.length - 1].t;
       const range = tMax - tMin || 1;
@@ -448,20 +404,10 @@ const ThroughputComparison: React.FC<{ a: SessionData; b: SessionData }> = ({
     const timeAxis = new Float64Array(POINTS);
     for (let i = 0; i < POINTS; i++) timeAxis[i] = i;
 
-    const seriesA =
-      nA.times.length > 0
-        ? resample(nA.times, nA.bps)
-        : new Float64Array(POINTS);
-    const seriesB =
-      nB.times.length > 0
-        ? resample(nB.times, nB.bps)
-        : new Float64Array(POINTS);
+    const seriesA = nA.times.length > 0 ? resample(nA.times, nA.bps) : new Float64Array(POINTS);
+    const seriesB = nB.times.length > 0 ? resample(nB.times, nB.bps) : new Float64Array(POINTS);
 
-    return [timeAxis, seriesA, seriesB] as [
-      Float64Array,
-      Float64Array,
-      Float64Array,
-    ];
+    return [timeAxis, seriesA, seriesB] as [Float64Array, Float64Array, Float64Array];
   }, [a.frames, b.frames]);
 
   const series: SeriesConfig[] = useMemo(
@@ -469,7 +415,7 @@ const ThroughputComparison: React.FC<{ a: SessionData; b: SessionData }> = ({
       { label: "Session A", color: "cyan", fill: true },
       { label: "Session B", color: "orange", fill: true },
     ],
-    [],
+    []
   );
 
   return (
@@ -485,12 +431,8 @@ const ThroughputComparison: React.FC<{ a: SessionData; b: SessionData }> = ({
         yFormat={(v) => (Number.isFinite(v) ? `${v.toFixed(1)} Mbps` : "0")}
       />
       <div className="flex justify-between mt-1 px-1">
-        <span className="text-[9px] text-[rgba(var(--ui-fg),0.2)] font-medium">
-          Start
-        </span>
-        <span className="text-[9px] text-[rgba(var(--ui-fg),0.2)] font-medium">
-          End →
-        </span>
+        <span className="text-[9px] text-[rgba(var(--ui-fg),0.2)] font-medium">Start</span>
+        <span className="text-[9px] text-[rgba(var(--ui-fg),0.2)] font-medium">End →</span>
       </div>
     </div>
   );
@@ -498,10 +440,7 @@ const ThroughputComparison: React.FC<{ a: SessionData; b: SessionData }> = ({
 
 // ─── Destination Diff ───────────────────────────────────────────────────────
 
-const DestinationDiff: React.FC<{ a: SessionData; b: SessionData }> = ({
-  a,
-  b,
-}) => {
+const DestinationDiff: React.FC<{ a: SessionData; b: SessionData }> = ({ a, b }) => {
   const { onlyA, onlyB, shared } = useMemo(() => {
     const setA = new Set(a.destinations.map((d) => d.ip));
     const setB = new Set(b.destinations.map((d) => d.ip));
@@ -543,10 +482,7 @@ const DestCol: React.FC<{
   dests: DestinationRecord[];
 }> = ({ label, color, dests }) => (
   <div>
-    <div
-      className="text-[10px] uppercase tracking-wider font-semibold mb-2"
-      style={{ color }}
-    >
+    <div className="text-[10px] uppercase tracking-wider font-semibold mb-2" style={{ color }}>
       {label}
     </div>
     {dests.length === 0 ? (
@@ -554,17 +490,9 @@ const DestCol: React.FC<{
     ) : (
       <div className="space-y-0.5">
         {dests.map((d) => (
-          <div
-            key={d.ip}
-            className="text-[11px] text-[rgba(var(--ui-fg),0.5)] truncate"
-          >
+          <div key={d.ip} className="text-[11px] text-[rgba(var(--ui-fg),0.5)] truncate">
             {d.org || d.ip}
-            {d.city && (
-              <span className="text-[rgba(var(--ui-fg),0.25)]">
-                {" "}
-                · {d.city}
-              </span>
-            )}
+            {d.city && <span className="text-[rgba(var(--ui-fg),0.25)]"> · {d.city}</span>}
           </div>
         ))}
       </div>
@@ -575,9 +503,7 @@ const DestCol: React.FC<{
 // ─── Shared sub-components ──────────────────────────────────────────────────
 
 const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
-  <h2 className="text-[13px] font-medium text-[rgba(var(--ui-fg),0.6)] mb-3">
-    {title}
-  </h2>
+  <h2 className="text-[13px] font-medium text-[rgba(var(--ui-fg),0.6)] mb-3">{title}</h2>
 );
 
 // ─── Helpers ────────────────────────────────────────────────────────────────

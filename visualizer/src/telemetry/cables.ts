@@ -40,9 +40,7 @@ export async function loadCables(): Promise<CableCollection> {
       const json = await invoke<string>("fetch_cables");
       raw = JSON.parse(json);
     } catch {
-      const res = await fetch(
-        "https://www.submarinecablemap.com/api/v3/cable/cable-geo.json",
-      );
+      const res = await fetch("https://www.submarinecablemap.com/api/v3/cable/cable-geo.json");
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       raw = await res.json();
     }
@@ -85,9 +83,7 @@ function hav(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
   const a =
     Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) ** 2;
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
@@ -104,7 +100,7 @@ function crossTrackDistance(
   startLat: number,
   startLng: number,
   endLat: number,
-  endLng: number,
+  endLng: number
 ): number {
   const R = 6371;
   const d13 = hav(startLat, startLng, pointLat, pointLng) / R;
@@ -120,7 +116,7 @@ function alongTrackPosition(
   startLat: number,
   startLng: number,
   endLat: number,
-  endLng: number,
+  endLng: number
 ): number {
   const totalDist = hav(startLat, startLng, endLat, endLng);
   if (totalDist < 1) return 0.5;
@@ -132,20 +128,14 @@ function alongTrackPosition(
   return distToStart / (distToStart + distToEnd);
 }
 
-function bearing(
-  lat1: number,
-  lng1: number,
-  lat2: number,
-  lng2: number,
-): number {
+function bearing(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const toRad = Math.PI / 180;
   const p1 = lat1 * toRad;
   const p2 = lat2 * toRad;
   const dL = (lng2 - lng1) * toRad;
 
   const y = Math.sin(dL) * Math.cos(p2);
-  const x =
-    Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dL);
+  const x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dL);
 
   return Math.atan2(y, x);
 }
@@ -157,7 +147,7 @@ export interface FlowEndpointsWithId extends FlowEndpoints {
 function scoreFeatureForRoute(
   f: CableFeature,
   flow: FlowEndpoints,
-  directDist: number,
+  directDist: number
 ): {
   score: number;
   srcDist: number;
@@ -206,7 +196,7 @@ function scoreFeatureForRoute(
         flow.srcLat,
         flow.srcLng,
         flow.dstLat,
-        flow.dstLng,
+        flow.dstLng
       );
       const alongPos = alongTrackPosition(
         lat,
@@ -214,7 +204,7 @@ function scoreFeatureForRoute(
         flow.srcLat,
         flow.srcLng,
         flow.dstLat,
-        flow.dstLng,
+        flow.dstLng
       );
 
       if (crossDist < corridorWidth && alongPos >= -0.05 && alongPos <= 1.05) {
@@ -241,15 +231,14 @@ function scoreFeatureForRoute(
   if (!isUseful) return null;
 
   const score =
-    ((minSrcDist + minDstDist) * (1.1 - corridorRatio)) /
-    Math.max(0.1, progressRatio + 0.5);
+    ((minSrcDist + minDstDist) * (1.1 - corridorRatio)) / Math.max(0.1, progressRatio + 0.5);
 
   return { score, srcDist: minSrcDist, dstDist: minDstDist, progressRatio };
 }
 
 export function matchFlowsPerFlow(
   flows: FlowEndpointsWithId[],
-  cables: CableCollection,
+  cables: CableCollection
 ): Map<string, Set<string>> {
   const perFlowCables = new Map<string, Set<string>>();
 
@@ -293,8 +282,7 @@ export function matchFlowsPerFlow(
         if (sf.dstDist < coveredToDst) coveredToDst = sf.dstDist;
 
         if (coveredFromSrc < corridorWidth && coveredToDst < corridorWidth) {
-          if (selected.size >= 3 && sf.score > scoredFeatures[0].score * 2)
-            break;
+          if (selected.size >= 3 && sf.score > scoredFeatures[0].score * 2) break;
         }
         if (selected.size >= 8) break;
       }

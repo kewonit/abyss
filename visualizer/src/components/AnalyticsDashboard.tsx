@@ -33,13 +33,7 @@ import {
   countryFlag,
 } from "../lib/utils";
 import { Button } from "./ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Skeleton } from "./ui/skeleton";
 
 type TimeRange = 7 | 30 | 0; // 7d, 30d, all time
@@ -115,11 +109,7 @@ export const AnalyticsDashboard: React.FC = () => {
       download[i] = Number.isFinite(d.bytesDown) ? d.bytesDown / 1e9 : 0;
     }
 
-    return [timestamps, upload, download] as [
-      Float64Array,
-      Float64Array,
-      Float64Array,
-    ];
+    return [timestamps, upload, download] as [Float64Array, Float64Array, Float64Array];
   }, [daily]);
 
   const dailySeries: SeriesConfig[] = useMemo(
@@ -127,26 +117,21 @@ export const AnalyticsDashboard: React.FC = () => {
       { label: "Upload", color: "orange", unit: "GB", fill: true },
       { label: "Download", color: "cyan", unit: "GB", fill: true },
     ],
-    [],
+    []
   );
 
   // ── Total traffic from daily ───────────────────────────────────────────
   const totalUp = daily.reduce((s, d) => s + (d.bytesUp || 0), 0);
   const totalDown = daily.reduce((s, d) => s + (d.bytesDown || 0), 0);
   const totalSessions = daily.reduce((s, d) => s + (d.sessionCount || 0), 0);
-  const totalHours =
-    daily.reduce((s, d) => s + (d.totalDurationSecs || 0), 0) / 3600;
+  const totalHours = daily.reduce((s, d) => s + (d.totalDurationSecs || 0), 0) / 3600;
 
-  const rangeLabel =
-    range === 7 ? "Last 7 days" : range === 30 ? "Last 30 days" : "All time";
+  const rangeLabel = range === 7 ? "Last 7 days" : range === 30 ? "Last 30 days" : "All time";
 
   if (loading) {
     return (
       <div className="w-full h-full bg-[rgba(var(--ui-bg),0.95)]">
-        <div
-          className="max-w-5xl mx-auto"
-          style={{ padding: "96px 48px 56px" }}
-        >
+        <div className="max-w-5xl mx-auto" style={{ padding: "96px 48px 56px" }}>
           <Skeleton className="h-5 w-24 mb-8" />
           <Skeleton className="h-8 w-48 mb-8" />
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10">
@@ -257,28 +242,17 @@ export const AnalyticsDashboard: React.FC = () => {
             />
             <MiniStat
               label="Oldest Session"
-              value={
-                stats.oldestSession
-                  ? formatDateWithYear(stats.oldestSession)
-                  : "—"
-              }
+              value={stats.oldestSession ? formatDateWithYear(stats.oldestSession) : "—"}
             />
             <MiniStat
               label="Newest Session"
-              value={
-                stats.newestSession
-                  ? formatDateWithYear(stats.newestSession)
-                  : "—"
-              }
+              value={stats.newestSession ? formatDateWithYear(stats.newestSession) : "—"}
             />
           </div>
         )}
 
         {/* Daily usage chart */}
-        <SectionHeader
-          icon={<BarChart3 size={14} />}
-          title="Daily Data Usage"
-        />
+        <SectionHeader icon={<BarChart3 size={14} />} title="Daily Data Usage" />
         {dailyChartData ? (
           <div className="mb-10">
             <UPlotChart
@@ -286,9 +260,7 @@ export const AnalyticsDashboard: React.FC = () => {
               series={dailySeries}
               height={220}
               timeAxis
-              yFormat={(v) =>
-                Number.isFinite(v) ? `${v.toFixed(1)} GB` : "0 GB"
-              }
+              yFormat={(v) => (Number.isFinite(v) ? `${v.toFixed(1)} GB` : "0 GB")}
             />
           </div>
         ) : (
@@ -299,10 +271,7 @@ export const AnalyticsDashboard: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-10">
           {/* Top Destinations */}
           <div>
-            <SectionHeader
-              icon={<Globe size={14} />}
-              title="Top Destinations"
-            />
+            <SectionHeader icon={<Globe size={14} />} title="Top Destinations" />
             {destinations.length > 0 ? (
               <div className="space-y-0.5">
                 {destinations.map((d, i) => (
@@ -364,10 +333,7 @@ const SummaryCard: React.FC<{
   </div>
 );
 
-const MiniStat: React.FC<{ label: string; value: string }> = ({
-  label,
-  value,
-}) => (
+const MiniStat: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <div
     className="rounded-xl border border-[rgba(var(--ui-fg),0.03)] bg-[rgba(var(--ui-fg),0.015)]"
     style={{ padding: "14px 18px" }}
@@ -375,9 +341,7 @@ const MiniStat: React.FC<{ label: string; value: string }> = ({
     <div className="text-[10px] text-[rgba(var(--ui-fg),0.3)] uppercase tracking-wider mb-1.5">
       {label}
     </div>
-    <div className="text-[13px] text-[rgba(var(--ui-fg),0.55)] font-medium">
-      {value}
-    </div>
+    <div className="text-[13px] text-[rgba(var(--ui-fg),0.55)] font-medium">{value}</div>
   </div>
 );
 
@@ -387,9 +351,7 @@ const SectionHeader: React.FC<{
 }> = ({ icon, title }) => (
   <div className="flex items-center gap-2.5 mb-4">
     <span className="text-(--accent-cyan)">{icon}</span>
-    <h2 className="text-[14px] font-medium text-[rgba(var(--ui-fg),0.6)]">
-      {title}
-    </h2>
+    <h2 className="text-[14px] font-medium text-[rgba(var(--ui-fg),0.6)]">{title}</h2>
   </div>
 );
 
@@ -418,22 +380,16 @@ const DestinationRow: React.FC<{
         {rank}
       </span>
       <div className="flex-1 min-w-0">
-        <div className="text-[13px] text-[rgba(var(--ui-fg),0.6)] truncate">
-          {displayName}
-        </div>
+        <div className="text-[13px] text-[rgba(var(--ui-fg),0.6)] truncate">{displayName}</div>
         {location && (
-          <div className="text-[10px] text-[rgba(var(--ui-fg),0.25)] mt-0.5">
-            {location}
-          </div>
+          <div className="text-[10px] text-[rgba(var(--ui-fg),0.25)] mt-0.5">{location}</div>
         )}
       </div>
       <div className="text-right">
         <div className="text-[12px] text-[rgba(var(--ui-fg),0.5)] font-mono">
           {formatDataSize(dest.totalBytes)}
         </div>
-        <div className="text-[10px] text-[rgba(var(--ui-fg),0.2)]">
-          {dest.connectionCount} conn
-        </div>
+        <div className="text-[10px] text-[rgba(var(--ui-fg),0.2)]">{dest.connectionCount} conn</div>
       </div>
     </div>
   );
@@ -458,8 +414,7 @@ const AppRow: React.FC<{
           {app.processName || "Unknown"}
         </div>
         <div className="text-[10px] text-[rgba(var(--ui-fg),0.25)] mt-0.5">
-          ↑{formatDataSize(app.totalBytesUp)} ↓
-          {formatDataSize(app.totalBytesDown)}
+          ↑{formatDataSize(app.totalBytesUp)} ↓{formatDataSize(app.totalBytesDown)}
         </div>
       </div>
       <div className="text-right">
@@ -503,14 +458,9 @@ const CompareSessionsPicker: React.FC = () => {
   if (!loaded || sessions.length < 2) {
     return (
       <div className="mb-8">
-        <SectionHeader
-          icon={<ArrowUpDown size={14} />}
-          title="Compare Sessions"
-        />
+        <SectionHeader icon={<ArrowUpDown size={14} />} title="Compare Sessions" />
         <EmptyState
-          message={
-            loaded ? "Need at least 2 sessions to compare" : "Loading sessions…"
-          }
+          message={loaded ? "Need at least 2 sessions to compare" : "Loading sessions…"}
         />
       </div>
     );
@@ -520,10 +470,7 @@ const CompareSessionsPicker: React.FC = () => {
 
   return (
     <div className="mb-8">
-      <SectionHeader
-        icon={<ArrowUpDown size={14} />}
-        title="Compare Sessions"
-      />
+      <SectionHeader icon={<ArrowUpDown size={14} />} title="Compare Sessions" />
       <div
         className="rounded-(--pill-radius) border border-(--pill-border) bg-(--pill-bg) backdrop-blur-xl"
         style={{ padding: "22px 24px" }}
@@ -538,18 +485,8 @@ const CompareSessionsPicker: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-[1fr_1fr_auto] items-end gap-4 max-[760px]:grid-cols-1">
-          <SessionSelect
-            label="Session A"
-            value={idA}
-            sessions={sessions}
-            onChange={setIdA}
-          />
-          <SessionSelect
-            label="Session B"
-            value={idB}
-            sessions={sessions}
-            onChange={setIdB}
-          />
+          <SessionSelect label="Session A" value={idA} sessions={sessions} onChange={setIdA} />
+          <SessionSelect label="Session B" value={idB} sessions={sessions} onChange={setIdB} />
           <Button
             disabled={!canCompare}
             onClick={() => canCompare && startComparison(idA, idB)}

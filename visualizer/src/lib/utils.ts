@@ -19,10 +19,7 @@ export function formatDataSize(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
   const k = 1024;
   const units = ["B", "KB", "MB", "GB", "TB"];
-  const idx = Math.min(
-    Math.floor(Math.log(bytes) / Math.log(k)),
-    units.length - 1,
-  );
+  const idx = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), units.length - 1);
   return `${(bytes / k ** idx).toFixed(idx === 0 ? 0 : 1)} ${units[idx]}`;
 }
 
@@ -104,19 +101,14 @@ export function countryFlag(code: string): string {
   if (!code || code.length < 2 || code === "Local") return "🌐";
   const upper = code.toUpperCase().slice(0, 2);
   try {
-    return String.fromCodePoint(
-      ...[...upper].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65),
-    );
+    return String.fromCodePoint(...[...upper].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65));
   } catch {
     return "🌐";
   }
 }
 
 /** Safely add two numbers that may be null/undefined/NaN. */
-export function safeSum(
-  a: number | null | undefined,
-  b: number | null | undefined,
-): number {
+export function safeSum(a: number | null | undefined, b: number | null | undefined): number {
   return (Number.isFinite(a) ? a! : 0) + (Number.isFinite(b) ? b! : 0);
 }
 

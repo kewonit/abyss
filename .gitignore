@@ -65,5 +65,7 @@ npcap-sdk/
 artifacts/
 
 # Internal planning docs
+docs/
 docs/internal/
 scripts
+skills

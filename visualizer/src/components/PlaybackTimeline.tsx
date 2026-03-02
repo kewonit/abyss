@@ -25,9 +25,7 @@ export const PlaybackTimeline: React.FC = () => {
   const speed = useTelemetryStore((s) => s.playback.speed);
   const position = useTelemetryStore((s) => s.playback.position);
   const totalFrames = useTelemetryStore((s) => s.playback.frames.length);
-  const sessionName = useTelemetryStore(
-    (s) => s.playback.sessionInfo?.name || "Session",
-  );
+  const sessionName = useTelemetryStore((s) => s.playback.sessionInfo?.name || "Session");
   const seekPlayback = useTelemetryStore((s) => s.seekPlayback);
   const tickPlayback = useTelemetryStore((s) => s.tickPlayback);
   const togglePlaybackPause = useTelemetryStore((s) => s.togglePlaybackPause);
@@ -111,7 +109,7 @@ export const PlaybackTimeline: React.FC = () => {
           break;
       }
     },
-    [active, togglePlaybackPause, seekPlayback, stopPlayback],
+    [active, togglePlaybackPause, seekPlayback, stopPlayback]
   );
 
   useEffect(() => {
@@ -141,8 +139,7 @@ export const PlaybackTimeline: React.FC = () => {
   const currentFrame = frames[position];
   const firstFrame = frames[0];
   const lastFrame = frames[totalFrames - 1];
-  const elapsedSecs =
-    currentFrame && firstFrame ? currentFrame.t - firstFrame.t : 0;
+  const elapsedSecs = currentFrame && firstFrame ? currentFrame.t - firstFrame.t : 0;
   const totalSecs = lastFrame && firstFrame ? lastFrame.t - firstFrame.t : 0;
 
   // Mini-waveform SVG path from throughput data
@@ -152,9 +149,7 @@ export const PlaybackTimeline: React.FC = () => {
     const w = 1000; // viewBox width
     const h = 24; // viewBox height
     const step = w / (frames.length - 1);
-    const points = frames.map(
-      (f, i) => `${i * step},${h - (f.bps / maxBps) * h}`,
-    );
+    const points = frames.map((f, i) => `${i * step},${h - (f.bps / maxBps) * h}`);
     return `M${points.join("L")}L${w},${h}L0,${h}Z`;
   }, [frames]);
 

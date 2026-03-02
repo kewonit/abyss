@@ -25,13 +25,7 @@ import {
   type HealthScore,
   type Anomaly,
 } from "../telemetry/sessions";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "./ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { Switch } from "./ui/switch";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
@@ -111,10 +105,7 @@ export const TopBar: React.FC = () => {
       const v = localStorage.getItem("abyss:autoCleanupAge");
       if (v) {
         const parsed = JSON.parse(v);
-        if (
-          typeof parsed?.enabled === "boolean" &&
-          typeof parsed?.days === "number"
-        ) {
+        if (typeof parsed?.enabled === "boolean" && typeof parsed?.days === "number") {
           return parsed as { enabled: boolean; days: number };
         }
       }
@@ -128,10 +119,7 @@ export const TopBar: React.FC = () => {
       const v = localStorage.getItem("abyss:autoCleanupMax");
       if (v) {
         const parsed = JSON.parse(v);
-        if (
-          typeof parsed?.enabled === "boolean" &&
-          typeof parsed?.count === "number"
-        ) {
+        if (typeof parsed?.enabled === "boolean" && typeof parsed?.count === "number") {
           return parsed as { enabled: boolean; count: number };
         }
       }
@@ -146,16 +134,10 @@ export const TopBar: React.FC = () => {
 
   /* persist cleanup prefs */
   useEffect(() => {
-    localStorage.setItem(
-      "abyss:autoCleanupAge",
-      JSON.stringify(autoCleanupAge),
-    );
+    localStorage.setItem("abyss:autoCleanupAge", JSON.stringify(autoCleanupAge));
   }, [autoCleanupAge]);
   useEffect(() => {
-    localStorage.setItem(
-      "abyss:autoCleanupMax",
-      JSON.stringify(autoCleanupMax),
-    );
+    localStorage.setItem("abyss:autoCleanupMax", JSON.stringify(autoCleanupMax));
   }, [autoCleanupMax]);
 
   /* fetch stats when settings dialog opens */
@@ -192,7 +174,7 @@ export const TopBar: React.FC = () => {
         /* best effort */
       }
     })();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const showStorageMsg = useCallback((msg: string) => {
     if (msgTimerRef.current) clearTimeout(msgTimerRef.current);
@@ -250,11 +232,7 @@ export const TopBar: React.FC = () => {
   }, [notificationsEnabled]);
 
   const handleToggleNotifications = useCallback(async (enabled: boolean) => {
-    if (
-      enabled &&
-      "Notification" in window &&
-      Notification.permission === "default"
-    ) {
+    if (enabled && "Notification" in window && Notification.permission === "default") {
       const perm = await Notification.requestPermission();
       if (perm !== "granted") return; // user denied
     }
@@ -283,7 +261,7 @@ export const TopBar: React.FC = () => {
             if (hs.score < 40 && (prev === null || prev >= 40)) {
               sendNotification(
                 "Network Health Alert",
-                `Health score dropped to ${hs.score}/100. ${hs.details || "Check your network."}`,
+                `Health score dropped to ${hs.score}/100. ${hs.details || "Check your network."}`
               );
             }
             lastNotifiedScoreRef.current = hs.score;
@@ -313,10 +291,7 @@ export const TopBar: React.FC = () => {
           if (notificationsEnabled) {
             const high = a.filter((x) => x.severity === "high");
             if (high.length > 0) {
-              sendNotification(
-                "Anomaly Detected",
-                high.map((h) => h.message).join("; "),
-              );
+              sendNotification("Anomaly Detected", high.map((h) => h.message).join("; "));
             }
           }
         })
@@ -335,9 +310,7 @@ export const TopBar: React.FC = () => {
     try {
       localStorage.setItem("abyss:theme", darkMode ? "dark" : "light");
     } catch {}
-    window.dispatchEvent(
-      new CustomEvent("abyss:theme-change", { detail: { darkMode } }),
-    );
+    window.dispatchEvent(new CustomEvent("abyss:theme-change", { detail: { darkMode } }));
   }, [darkMode]);
 
   useEffect(() => {
@@ -348,7 +321,7 @@ export const TopBar: React.FC = () => {
           hour: "2-digit",
           minute: "2-digit",
           second: "2-digit",
-        }),
+        })
       );
     tick();
     const id = setInterval(tick, 1000);
@@ -439,9 +412,7 @@ export const TopBar: React.FC = () => {
                   className="h-8 rounded-lg border-[rgba(var(--ui-fg),0.08)] bg-[rgba(var(--ui-fg),0.02)] px-3 text-[rgba(var(--ui-fg),0.68)] hover:bg-[rgba(var(--ui-fg),0.08)] hover:text-[rgba(var(--ui-fg),0.9)]"
                   onClick={() => setView("live")}
                 >
-                  <span className="text-[11px] font-medium tracking-[0.3px] uppercase">
-                    Live
-                  </span>
+                  <span className="text-[11px] font-medium tracking-[0.3px] uppercase">Live</span>
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Back to live view</TooltipContent>
@@ -498,10 +469,7 @@ export const TopBar: React.FC = () => {
                   className="w-9 h-9 bg-(--pill-bg) border border-(--pill-border) rounded-xl backdrop-blur-xl text-[rgba(var(--ui-fg),0.55)] hover:bg-[rgba(var(--ui-fg),0.08)] hover:text-[rgba(var(--ui-fg),0.9)]"
                   onClick={handleNorthUp}
                 >
-                  <Navigation
-                    size={16}
-                    style={{ transform: "rotate(-45deg)" }}
-                  />
+                  <Navigation size={16} style={{ transform: "rotate(-45deg)" }} />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>North Up</TooltipContent>
@@ -550,10 +518,7 @@ export const TopBar: React.FC = () => {
                 </Tabs>
 
                 <ScrollArea className="max-h-[60vh]">
-                  <div
-                    style={{ paddingTop: 8, paddingBottom: 8 }}
-                    className="flex flex-col gap-3"
-                  >
+                  <div style={{ paddingTop: 8, paddingBottom: 8 }} className="flex flex-col gap-3">
                     {/* ── General Tab ── */}
                     {settingsTab === "general" && (
                       <div className="flex flex-col gap-3 tab-content-enter">
@@ -601,10 +566,7 @@ export const TopBar: React.FC = () => {
                               Toggle between dark and light theme
                             </span>
                           </div>
-                          <Switch
-                            checked={darkMode}
-                            onCheckedChange={setDarkMode}
-                          />
+                          <Switch checked={darkMode} onCheckedChange={setDarkMode} />
                         </div>
                       </div>
                     )}
@@ -618,10 +580,7 @@ export const TopBar: React.FC = () => {
                         >
                           <div className="flex flex-col gap-0.5">
                             <div className="flex items-center gap-1.5">
-                              <Bell
-                                size={12}
-                                className="text-[rgba(var(--ui-fg),0.5)]"
-                              />
+                              <Bell size={12} className="text-[rgba(var(--ui-fg),0.5)]" />
                               <span className="text-[13px] font-medium text-[rgba(var(--ui-fg),0.9)]">
                                 Health Alerts
                               </span>
@@ -673,9 +632,7 @@ export const TopBar: React.FC = () => {
                                 {(() => {
                                   if (!stats.oldestSession) return "—";
                                   try {
-                                    return new Date(
-                                      stats.oldestSession,
-                                    ).toLocaleDateString();
+                                    return new Date(stats.oldestSession).toLocaleDateString();
                                   } catch {
                                     return "—";
                                   }
@@ -690,10 +647,7 @@ export const TopBar: React.FC = () => {
                           style={{ padding: "12px 16px" }}
                           className="flex items-center justify-between bg-[rgba(var(--ui-fg),0.03)] rounded-xl border border-[rgba(var(--ui-fg),0.05)]"
                         >
-                          <div
-                            className="flex flex-col gap-0.5"
-                            style={{ flex: 1 }}
-                          >
+                          <div className="flex flex-col gap-0.5" style={{ flex: 1 }}>
                             <span className="text-[13px] font-medium text-[rgba(var(--ui-fg),0.9)]">
                               Auto-delete old sessions
                             </span>
@@ -711,10 +665,7 @@ export const TopBar: React.FC = () => {
                                     ...prev,
                                     days: Math.max(
                                       1,
-                                      Math.min(
-                                        365,
-                                        parseInt(e.target.value) || 30,
-                                      ),
+                                      Math.min(365, parseInt(e.target.value) || 30)
                                     ),
                                   }))
                                 }
@@ -742,10 +693,7 @@ export const TopBar: React.FC = () => {
                           style={{ padding: "12px 16px" }}
                           className="flex items-center justify-between bg-[rgba(var(--ui-fg),0.03)] rounded-xl border border-[rgba(var(--ui-fg),0.05)]"
                         >
-                          <div
-                            className="flex flex-col gap-0.5"
-                            style={{ flex: 1 }}
-                          >
+                          <div className="flex flex-col gap-0.5" style={{ flex: 1 }}>
                             <span className="text-[13px] font-medium text-[rgba(var(--ui-fg),0.9)]">
                               Limit total sessions
                             </span>
@@ -763,10 +711,7 @@ export const TopBar: React.FC = () => {
                                     ...prev,
                                     count: Math.max(
                                       1,
-                                      Math.min(
-                                        9999,
-                                        parseInt(e.target.value) || 100,
-                                      ),
+                                      Math.min(9999, parseInt(e.target.value) || 100)
                                     ),
                                   }))
                                 }
@@ -790,19 +735,14 @@ export const TopBar: React.FC = () => {
                         </div>
 
                         {/* Action buttons */}
-                        <div
-                          className="flex items-center gap-2"
-                          style={{ marginTop: 4 }}
-                        >
+                        <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
                           <Button
                             variant="outline"
                             size="sm"
                             className="flex-1 gap-1.5 text-[11px] font-semibold tracking-[0.5px] uppercase"
                             onClick={handleManualCleanup}
                             disabled={
-                              storageBusy ||
-                              (!autoCleanupAge.enabled &&
-                                !autoCleanupMax.enabled)
+                              storageBusy || (!autoCleanupAge.enabled && !autoCleanupMax.enabled)
                             }
                             title="Run cleanup now with current settings"
                           >
@@ -834,13 +774,11 @@ export const TopBar: React.FC = () => {
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>
-                                Delete all sessions?
-                              </AlertDialogTitle>
+                              <AlertDialogTitle>Delete all sessions?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                This will permanently delete all completed
-                                sessions and their data. Active recordings will
-                                not be affected. This action cannot be undone.
+                                This will permanently delete all completed sessions and their data.
+                                Active recordings will not be affected. This action cannot be
+                                undone.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
