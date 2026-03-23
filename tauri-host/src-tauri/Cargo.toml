@@ -1,6 +1,6 @@
 [package]
 name = "abyss"
-version = "0.1.0"
+version = "0.1.1"
 description = "Abyss — Living abyssal ecosystem network visualizer"
 authors = ["Abyss Project"]
 edition = "2021"

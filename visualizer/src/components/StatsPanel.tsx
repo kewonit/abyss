@@ -24,7 +24,7 @@ const Sparkline: React.FC<{
   height?: number;
   unit?: string;
   onHoverValue?: (val: string | null) => void;
-}> = ({ data, color, height = 40, unit = "", onHoverValue }) => {
+}> = React.memo(({ data, color, height = 40, unit = "", onHoverValue }) => {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
   const handleMouseMove = useCallback(
@@ -46,7 +46,9 @@ const Sparkline: React.FC<{
   }, [onHoverValue]);
 
   if (data.length < 2)
-    return <div className="w-full h-9 block rounded-md bg-[rgba(var(--ui-fg),0.02)]" />;
+    return (
+      <div className="w-full block rounded-md bg-[rgba(var(--ui-fg),0.02)]" style={{ height }} />
+    );
   const max = Math.max(...data, 1);
   const w = 260;
   const pts = data.map((v, i) => ({
@@ -62,7 +64,8 @@ const Sparkline: React.FC<{
   return (
     <svg
       viewBox={`0 0 ${w} ${height}`}
-      className="w-full h-9 block rounded-md bg-[rgba(var(--ui-fg),0.02)] cursor-crosshair"
+      className="w-full block rounded-md bg-[rgba(var(--ui-fg),0.02)] cursor-crosshair"
+      style={{ height }}
       preserveAspectRatio="none"
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
@@ -109,7 +112,7 @@ const Sparkline: React.FC<{
       )}
     </svg>
   );
-};
+});
 
 export const StatsPanel: React.FC = () => {
   const isPlayback = useTelemetryStore((s) => s.playback.active);
@@ -159,11 +162,11 @@ export const StatsPanel: React.FC = () => {
   const renderBottomStrip = (position: string, columns: string, showUpDown: boolean) => (
     <aside
       aria-label="Network statistics"
-      className={`absolute ${position} left-3 right-3 z-20 h-25 overflow-hidden bg-(--pill-bg) border border-(--pill-border) rounded-(--pill-radius) backdrop-blur-xl pointer-events-auto max-[640px]:hidden shadow-[0_-2px_16px_rgba(0,0,0,0.2)]`}
+      className={`absolute ${position} left-4 right-4 z-20 h-38 overflow-hidden bg-(--pill-bg) border border-(--pill-border) rounded-(--pill-radius) backdrop-blur-xl pointer-events-auto max-[640px]:hidden shadow-[0_-2px_16px_rgba(0,0,0,0.2)]`}
     >
       <div
         className="grid gap-0 divide-x divide-[rgba(var(--ui-fg),0.06)] items-stretch h-full"
-        style={{ gridTemplateColumns: columns, padding: "10px 0" }}
+        style={{ gridTemplateColumns: columns, padding: "12px 0" }}
       >
         {/* Throughput */}
         <div className="px-3.5 flex flex-col overflow-hidden">
@@ -177,13 +180,15 @@ export const StatsPanel: React.FC = () => {
               </span>
             )}
           </div>
-          <Sparkline
-            data={throughputHistory}
-            color="#00d4f5"
-            height={28}
-            unit=" Mbps"
-            onHoverValue={setHoverThroughput}
-          />
+          <div className="flex-1 min-h-0">
+            <Sparkline
+              data={throughputHistory}
+              color="#00d4f5"
+              height={56}
+              unit=" Mbps"
+              onHoverValue={setHoverThroughput}
+            />
+          </div>
           <div className="font-mono text-sm font-bold text-[rgba(var(--ui-fg),0.8)] tabular-nums flex items-baseline gap-1 mt-1">
             {derived.throughputMbps.toFixed(1)}
             <span className="text-[13px] font-medium text-[rgba(var(--ui-fg),0.3)]">Mbps</span>
@@ -230,13 +235,15 @@ export const StatsPanel: React.FC = () => {
               </span>
             )}
           </div>
-          <Sparkline
-            data={latencyHistory}
-            color="#ff7a45"
-            height={28}
-            unit="ms"
-            onHoverValue={setHoverLatency}
-          />
+          <div className="flex-1 min-h-0">
+            <Sparkline
+              data={latencyHistory}
+              color="#ff7a45"
+              height={56}
+              unit="ms"
+              onHoverValue={setHoverLatency}
+            />
+          </div>
           <div className="font-mono text-sm font-bold text-[rgba(var(--ui-fg),0.8)] tabular-nums flex items-baseline gap-1 mt-1">
             {frame?.net.latencyMs.toFixed(0) ?? "0"}
             <span className="text-[13px] font-medium text-[rgba(var(--ui-fg),0.3)]">ms</span>
@@ -253,7 +260,7 @@ export const StatsPanel: React.FC = () => {
               {formatNumber(stableCountries.length)}
             </span>
           </div>
-          <div className="flex-1 flex flex-col gap-0.5 max-h-12 overflow-y-auto [&::-webkit-scrollbar]:w-0.5 [&::-webkit-scrollbar-thumb]:bg-[rgba(var(--ui-fg),0.08)]">
+          <div className="flex-1 flex flex-col gap-0.5 overflow-y-auto [&::-webkit-scrollbar]:w-0.5 [&::-webkit-scrollbar-thumb]:bg-[rgba(var(--ui-fg),0.08)]">
             {stableCountries.length === 0 ? (
               <span className="text-[13px] text-[rgba(var(--ui-fg),0.12)]">No destinations</span>
             ) : (
@@ -286,7 +293,7 @@ export const StatsPanel: React.FC = () => {
               {formatNumber(stableFlows.length)}
             </span>
           </div>
-          <div className="flex-1 flex flex-col gap-0.5 max-h-12 overflow-y-auto [&::-webkit-scrollbar]:w-0.5 [&::-webkit-scrollbar-thumb]:bg-[rgba(var(--ui-fg),0.08)]">
+          <div className="flex-1 flex flex-col gap-0.5 overflow-y-auto [&::-webkit-scrollbar]:w-0.5 [&::-webkit-scrollbar-thumb]:bg-[rgba(var(--ui-fg),0.08)]">
             {stableFlows.length === 0 ? (
               <span className="text-[13px] text-[rgba(var(--ui-fg),0.12)]">No active flows</span>
             ) : (

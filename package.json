@@ -1,8 +1,8 @@
 {
   "name": "abyss",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
-  "description": "Real-time network intelligence dashboard — Tauri app with MapLibre globe visualization",
+  "description": "Real-time network intelligence dashboard — Tauri app with Globe.GL visualization",
   "scripts": {
     "dev": "cd tauri-host/src-tauri && cargo tauri dev",
     "build": "cd tauri-host/src-tauri && cargo tauri build",
@@ -17,7 +17,7 @@
     "network",
     "visualizer",
     "tauri",
-    "maplibre",
+    "globe-gl",
     "desktop-app"
   ],
   "license": "MIT",

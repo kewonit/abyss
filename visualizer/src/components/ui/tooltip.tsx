@@ -1,33 +1,40 @@
-import * as React from "react";
-import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-const TooltipProvider = TooltipPrimitive.Provider;
-const Tooltip = TooltipPrimitive.Root;
-const TooltipTrigger = TooltipPrimitive.Trigger;
+function TooltipProvider({ children }: { children: ReactNode; delayDuration?: number }) {
+  return <>{children}</>;
+}
 
-const TooltipContent = React.forwardRef<
-  React.ComponentRef<typeof TooltipPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
->(({ className, sideOffset = 6, ...props }, ref) => (
-  <TooltipPrimitive.Portal>
-    <TooltipPrimitive.Content
-      ref={ref}
-      sideOffset={sideOffset}
+function Tooltip({ children }: { children: ReactNode }) {
+  return <span className="relative inline-flex group/tip">{children}</span>;
+}
+
+function TooltipTrigger({ children }: { children: ReactNode; asChild?: boolean }) {
+  return <>{children}</>;
+}
+
+function TooltipContent({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+  sideOffset?: number;
+  side?: string;
+}) {
+  return (
+    <span
       className={cn(
-        "z-50 overflow-hidden rounded-lg px-3 py-1.5 text-[13px] font-medium shadow-md",
+        "absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 px-3 py-1.5 text-[13px] font-medium rounded-lg whitespace-nowrap",
         "bg-[rgba(var(--ui-bg),0.9)] text-[rgba(var(--ui-fg),0.85)] border border-[rgba(var(--ui-fg),0.08)]",
-        "backdrop-blur-xl",
-        "animate-in fade-in-0 zoom-in-95",
-        "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
-        "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2",
-        "data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        "backdrop-blur-xl shadow-md",
+        "opacity-0 pointer-events-none group-hover/tip:opacity-100 transition-opacity duration-150",
         className
       )}
-      {...props}
-    />
-  </TooltipPrimitive.Portal>
-));
-TooltipContent.displayName = TooltipPrimitive.Content.displayName;
+    >
+      {children}
+    </span>
+  );
+}
 
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider };

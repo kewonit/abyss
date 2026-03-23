@@ -12,17 +12,22 @@ import {
   FolderOpen,
   Keyboard,
 } from "lucide-react";
+import { useShallow } from "zustand/react/shallow";
 import { useTelemetryStore } from "../telemetry/store";
 import { startSession, stopSession } from "../telemetry/sessions";
 
 export const CommandPalette: React.FC = () => {
   const [open, setOpen] = useState(false);
-  const setView = useTelemetryStore((s) => s.setView);
-  const setDrawerOpen = useTelemetryStore((s) => s.setDrawerOpen);
-  const recording = useTelemetryStore((s) => s.recording);
-  const setRecording = useTelemetryStore((s) => s.setRecording);
-  const view = useTelemetryStore((s) => s.view);
-  const stopPlayback = useTelemetryStore((s) => s.stopPlayback);
+  const { setView, setDrawerOpen, recording, setRecording, view, stopPlayback } = useTelemetryStore(
+    useShallow((s) => ({
+      setView: s.setView,
+      setDrawerOpen: s.setDrawerOpen,
+      recording: s.recording,
+      setRecording: s.setRecording,
+      view: s.view,
+      stopPlayback: s.stopPlayback,
+    }))
+  );
 
   // Ctrl+K opens palette
   useEffect(() => {

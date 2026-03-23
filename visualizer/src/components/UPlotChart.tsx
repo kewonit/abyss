@@ -181,15 +181,34 @@ export const UPlotChart: React.FC<UPlotChartProps> = ({
     [series, height, timeAxis, extraAxes, scales, yFormat, noLegend]
   );
 
-  // Create / resize / destroy
+  // Track series config to detect structural changes that require full recreate
+  const seriesKeyRef = useRef("");
+
+  // Create chart once, update data via setData()
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    // Guard: need at least 1 data point and matching series count
     if (!data || data.length === 0 || data[0].length === 0 || data.length - 1 !== series.length) {
       return;
     }
+
+    // Structural key: series labels + scales determine if we need to recreate
+    const seriesKey = series.map((s) => `${s.label}:${s.color}:${s.scale ?? "y"}`).join("|");
+
+    // If chart exists and structure hasn't changed, just update data
+    if (chartRef.current && seriesKey === seriesKeyRef.current) {
+      chartRef.current.setData(data);
+      return;
+    }
+
+    // Structure changed or first mount: destroy old, create new
+    if (chartRef.current) {
+      chartRef.current.destroy();
+      chartRef.current = null;
+    }
+
+    seriesKeyRef.current = seriesKey;
 
     const width = container.clientWidth;
     if (width <= 0) return;
@@ -198,24 +217,35 @@ export const UPlotChart: React.FC<UPlotChartProps> = ({
     const chart = new uPlot(opts, data, container);
     chartRef.current = chart;
 
-    // ResizeObserver for responsive width
+    return () => {
+      // Only clean up on unmount — not on data updates
+    };
+  }, [data, series, buildOpts, height]);
+
+  // Separate effect for resize observer (doesn't depend on data)
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
     const ro = new ResizeObserver((entries) => {
+      const chart = chartRef.current;
+      if (!chart) return;
       const entry = entries[0];
       if (entry) {
         const newWidth = entry.contentRect.width;
-        if (newWidth > 0) {
-          chart.setSize({ width: newWidth, height });
-        }
+        if (newWidth > 0) chart.setSize({ width: newWidth, height });
       }
     });
     ro.observe(container);
 
     return () => {
       ro.disconnect();
-      chart.destroy();
-      chartRef.current = null;
+      if (chartRef.current) {
+        chartRef.current.destroy();
+        chartRef.current = null;
+      }
     };
-  }, [data, series, buildOpts, height]);
+  }, [height]);
 
   // Empty state: if no data points or only 1 timestamp, show placeholder
   const hasData = data.length > 0 && data[0].length >= 2;

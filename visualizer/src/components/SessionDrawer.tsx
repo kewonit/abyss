@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { X, Clock, Trash2, ChevronRight, Search } from "lucide-react";
+import { useShallow } from "zustand/react/shallow";
 import { useTelemetryStore } from "../telemetry/store";
 import {
   listSessions,
@@ -63,11 +64,15 @@ import { ScrollArea } from "./ui/scroll-area";
 import { Badge } from "./ui/badge";
 
 export const SessionDrawer: React.FC = () => {
-  const drawerOpen = useTelemetryStore((s) => s.drawerOpen);
-  const setDrawerOpen = useTelemetryStore((s) => s.setDrawerOpen);
-  const selectSession = useTelemetryStore((s) => s.selectSession);
-  const recording = useTelemetryStore((s) => s.recording);
-  const setRecording = useTelemetryStore((s) => s.setRecording);
+  const { drawerOpen, setDrawerOpen, selectSession, recording, setRecording } = useTelemetryStore(
+    useShallow((s) => ({
+      drawerOpen: s.drawerOpen,
+      setDrawerOpen: s.setDrawerOpen,
+      selectSession: s.selectSession,
+      recording: s.recording,
+      setRecording: s.setRecording,
+    }))
+  );
 
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [loading, setLoading] = useState(false);

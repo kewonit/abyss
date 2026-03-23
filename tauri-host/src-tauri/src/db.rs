@@ -1582,17 +1582,17 @@ pub fn compute_baseline(conn: &Connection, range_days: u32) -> SqlResult<u32> {
             CAST(strftime('%H', f.timestamp) AS INTEGER) AS hour_of_day,
             CAST(strftime('%w', f.timestamp) AS INTEGER) AS day_of_week,
             AVG(f.bps)       AS avg_bps,
-            -- population stddev via sqrt(avg(x²) - avg(x)²)
+            -- population variance (stddev² — SQLite lacks sqrt)
             CASE WHEN COUNT(*) > 1
-                 THEN sqrt(MAX(0, AVG(f.bps * f.bps) - AVG(f.bps) * AVG(f.bps)))
+                 THEN MAX(0, AVG(f.bps * f.bps) - AVG(f.bps) * AVG(f.bps))
                  ELSE 0 END AS stddev_bps,
             AVG(f.active_flows) AS avg_flows,
             CASE WHEN COUNT(*) > 1
-                 THEN sqrt(MAX(0, AVG(CAST(f.active_flows AS REAL) * f.active_flows) - AVG(CAST(f.active_flows AS REAL)) * AVG(CAST(f.active_flows AS REAL))))
+                 THEN MAX(0, AVG(CAST(f.active_flows AS REAL) * f.active_flows) - AVG(CAST(f.active_flows AS REAL)) * AVG(CAST(f.active_flows AS REAL)))
                  ELSE 0 END AS stddev_flows,
             AVG(f.latency_ms)   AS avg_latency,
             CASE WHEN COUNT(*) > 1
-                 THEN sqrt(MAX(0, AVG(f.latency_ms * f.latency_ms) - AVG(f.latency_ms) * AVG(f.latency_ms)))
+                 THEN MAX(0, AVG(f.latency_ms * f.latency_ms) - AVG(f.latency_ms) * AVG(f.latency_ms))
                  ELSE 0 END AS stddev_latency,
             COUNT(*) AS sample_count
         FROM frames f
@@ -1701,11 +1701,11 @@ pub fn get_baseline_profile(conn: &Connection) -> SqlResult<Vec<BaselineEntry>> 
                 hour_of_day: row.get(0)?,
                 day_of_week: row.get(1)?,
                 avg_bps: row.get::<_, f64>(2).unwrap_or(0.0),
-                stddev_bps: row.get::<_, f64>(3).unwrap_or(0.0),
+                stddev_bps: row.get::<_, f64>(3).unwrap_or(0.0).sqrt(),
                 avg_flows: row.get::<_, f64>(4).unwrap_or(0.0),
-                stddev_flows: row.get::<_, f64>(5).unwrap_or(0.0),
+                stddev_flows: row.get::<_, f64>(5).unwrap_or(0.0).sqrt(),
                 avg_latency_ms: row.get::<_, f64>(6).unwrap_or(0.0),
-                stddev_latency: row.get::<_, f64>(7).unwrap_or(0.0),
+                stddev_latency: row.get::<_, f64>(7).unwrap_or(0.0).sqrt(),
                 common_processes: serde_json::from_str(&proc_str).unwrap_or_default(),
                 common_countries: serde_json::from_str(&country_str).unwrap_or_default(),
                 sample_count: row.get::<_, i64>(10).unwrap_or(0),
@@ -1732,11 +1732,11 @@ pub fn get_baseline_for_time(conn: &Connection, hour: i32, dow: i32) -> SqlResul
                 hour_of_day: row.get(0)?,
                 day_of_week: row.get(1)?,
                 avg_bps: row.get::<_, f64>(2).unwrap_or(0.0),
-                stddev_bps: row.get::<_, f64>(3).unwrap_or(0.0),
+                stddev_bps: row.get::<_, f64>(3).unwrap_or(0.0).sqrt(),
                 avg_flows: row.get::<_, f64>(4).unwrap_or(0.0),
-                stddev_flows: row.get::<_, f64>(5).unwrap_or(0.0),
+                stddev_flows: row.get::<_, f64>(5).unwrap_or(0.0).sqrt(),
                 avg_latency_ms: row.get::<_, f64>(6).unwrap_or(0.0),
-                stddev_latency: row.get::<_, f64>(7).unwrap_or(0.0),
+                stddev_latency: row.get::<_, f64>(7).unwrap_or(0.0).sqrt(),
                 common_processes: serde_json::from_str(&proc_str).unwrap_or_default(),
                 common_countries: serde_json::from_str(&country_str).unwrap_or_default(),
                 sample_count: row.get(10)?,

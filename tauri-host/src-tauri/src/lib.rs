@@ -19,9 +19,9 @@ const SCHEMA_VERSION: u32 = 2;
 const TICK_MS: u64 = 1000;
 const NETSTAT_POLL_MS: u64 = 2000;
 const GEO_API: &str = "http://ip-api.com/batch";
-const MAX_FLOWS_PER_FRAME: usize = 35;
-const GEO_CACHE_MAX_SIZE: usize = 5_000;
-const GEO_CACHE_TTL_SECS: u64 = 30 * 60;
+const MAX_FLOWS_PER_FRAME: usize = 25;
+const GEO_CACHE_MAX_SIZE: usize = 2_000;
+const GEO_CACHE_TTL_SECS: u64 = 10 * 60;
 const GEO_BACKOFF_MIN_SECS: u64 = 3;
 const GEO_BACKOFF_MAX_SECS: u64 = 30;
 #[cfg(debug_assertions)]
@@ -1077,9 +1077,46 @@ async fn fetch_cables() -> Result<String, String> {
         return Err(format!("Cable fetch failed with status {}", resp.status()));
     }
     let text = resp.text().await.map_err(|e| e.to_string())?;
+
+    // Simplify cable coordinates — keep every 3rd point to reduce JS heap by ~60%.
+    // Preserves first and last points of each line for correct endpoints.
+    let mut parsed: serde_json::Value = serde_json::from_str(&text)
+        .map_err(|e| format!("Failed to parse cable JSON: {e}"))?;
+
+    if let Some(features) = parsed.get_mut("features").and_then(|v| v.as_array_mut()) {
+        for feature in features.iter_mut() {
+            if let Some(coords) = feature
+                .get_mut("geometry")
+                .and_then(|g| g.get_mut("coordinates"))
+                .and_then(|c| c.as_array_mut())
+            {
+                for line in coords.iter_mut() {
+                    if let Some(points) = line.as_array() {
+                        let len = points.len();
+                        if len > 6 {
+                            let simplified: Vec<serde_json::Value> = points
+                                .iter()
+                                .enumerate()
+                                .filter(|(i, _)| *i == 0 || *i == len - 1 || *i % 3 == 0)
+                                .map(|(_, v)| v.clone())
+                                .collect();
+                            *line = serde_json::Value::Array(simplified);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let simplified = serde_json::to_string(&parsed)
+        .map_err(|e| format!("Failed to serialize simplified cables: {e}"))?;
     #[cfg(debug_assertions)]
-    println!("[Abyss] Fetched submarine cable data ({} bytes)", text.len());
-    Ok(text)
+    println!(
+        "[Abyss] Fetched submarine cable data ({} bytes raw, {} bytes simplified)",
+        text.len(),
+        simplified.len()
+    );
+    Ok(simplified)
 }
 
 // ─── Session management Tauri commands ──────────────────────────────────────

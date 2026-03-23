@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { ArrowLeft, ArrowLeftRight, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { useTelemetryStore } from "../telemetry/store";
 import {
@@ -20,6 +20,7 @@ import {
 } from "../lib/utils";
 import { Button } from "./ui/button";
 import { Skeleton } from "./ui/skeleton";
+import { useAsyncData } from "../lib/hooks";
 
 interface SessionData {
   info: SessionInfo;
@@ -32,57 +33,26 @@ export const SessionComparison: React.FC = () => {
   const setView = useTelemetryStore((s) => s.setView);
   const startComparison = useTelemetryStore((s) => s.startComparison);
 
-  const [dataA, setDataA] = useState<SessionData | null>(null);
-  const [dataB, setDataB] = useState<SessionData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const loadSession = async (id: string): Promise<SessionData> => {
+    const info = await getSession(id);
+    if (!info) throw new Error("Session not found: " + id);
+    const [frames, destinations] = await Promise.all([
+      getSessionFrames(id),
+      getSessionDestinations(id),
+    ]);
+    return { info, frames, destinations };
+  };
 
-  useEffect(() => {
-    if (!comparisonIds) {
-      setLoading(false);
-      setError("No sessions selected for comparison.");
-      return;
-    }
-    if (comparisonIds[0] === comparisonIds[1]) {
-      setLoading(false);
-      setError("Cannot compare a session with itself.");
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-
-    const loadSession = async (id: string): Promise<SessionData | null> => {
-      const info = await getSession(id);
-      if (!info) return null;
-      const [frames, destinations] = await Promise.all([
-        getSessionFrames(id),
-        getSessionDestinations(id),
-      ]);
-      return { info, frames, destinations };
-    };
-
-    Promise.all([loadSession(comparisonIds[0]), loadSession(comparisonIds[1])])
-      .then(([a, b]) => {
-        if (cancelled) return;
-        if (!a || !b) {
-          setError("One or both sessions could not be loaded.");
-          return;
-        }
-        setDataA(a);
-        setDataB(b);
-      })
-      .catch((e) => {
-        if (!cancelled) setError(String(e));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [comparisonIds]);
+  const { data, loading, error } = useAsyncData(() => {
+    if (!comparisonIds) return Promise.reject("No sessions selected for comparison.");
+    if (comparisonIds[0] === comparisonIds[1])
+      return Promise.reject("Cannot compare a session with itself.");
+    return Promise.all([loadSession(comparisonIds[0]), loadSession(comparisonIds[1])]).then(
+      ([a, b]) => ({ a, b })
+    );
+  }, [comparisonIds?.[0], comparisonIds?.[1]]);
+  const dataA = data?.a ?? null;
+  const dataB = data?.b ?? null;
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -95,7 +65,7 @@ export const SessionComparison: React.FC = () => {
     return () => window.removeEventListener("keydown", handler);
   }, [setView]);
 
-  // Guard: periodically validate that both sessions still exist
+  // Guard: navigate away if either session is deleted
   useEffect(() => {
     if (!comparisonIds || !dataA || !dataB) return;
     const interval = setInterval(async () => {
@@ -104,17 +74,13 @@ export const SessionComparison: React.FC = () => {
           getSession(comparisonIds[0]),
           getSession(comparisonIds[1]),
         ]);
-        if (!a || !b) {
-          setError("One or both sessions were deleted.");
-          setDataA(null);
-          setDataB(null);
-        }
+        if (!a || !b) setView("analytics");
       } catch {
-        // Silently ignore transient errors
+        /* ignore transient errors */
       }
     }, 10_000);
     return () => clearInterval(interval);
-  }, [comparisonIds, dataA, dataB]);
+  }, [comparisonIds, dataA, dataB, setView]);
 
   if (loading) {
     return (

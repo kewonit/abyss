@@ -9,7 +9,8 @@ import {
   ChevronsRight,
   RotateCcw,
 } from "lucide-react";
-import * as SliderPrimitive from "@radix-ui/react-slider";
+import { Slider } from "./ui/slider";
+import { useShallow } from "zustand/react/shallow";
 import { useTelemetryStore } from "../telemetry/store";
 import { formatDuration } from "../lib/utils";
 import { Button } from "./ui/button";
@@ -23,18 +24,33 @@ const SPEEDS = [1, 2, 5, 10] as const;
 const FRAME_INTERVAL_S = 5;
 
 export const PlaybackTimeline: React.FC = () => {
-  // Granular selectors — avoid re-render on unrelated playback state changes
-  const active = useTelemetryStore((s) => s.playback.active);
-  const paused = useTelemetryStore((s) => s.playback.paused);
-  const speed = useTelemetryStore((s) => s.playback.speed);
-  const position = useTelemetryStore((s) => s.playback.position);
-  const totalFrames = useTelemetryStore((s) => s.playback.frames.length);
-  const sessionName = useTelemetryStore((s) => s.playback.sessionInfo?.name || "Session");
-  const seekPlayback = useTelemetryStore((s) => s.seekPlayback);
-  const tickPlayback = useTelemetryStore((s) => s.tickPlayback);
-  const togglePlaybackPause = useTelemetryStore((s) => s.togglePlaybackPause);
-  const setPlaybackSpeed = useTelemetryStore((s) => s.setPlaybackSpeed);
-  const stopPlayback = useTelemetryStore((s) => s.stopPlayback);
+  const {
+    active,
+    paused,
+    speed,
+    position,
+    totalFrames,
+    sessionName,
+    seekPlayback,
+    tickPlayback,
+    togglePlaybackPause,
+    setPlaybackSpeed,
+    stopPlayback,
+  } = useTelemetryStore(
+    useShallow((s) => ({
+      active: s.playback.active,
+      paused: s.playback.paused,
+      speed: s.playback.speed,
+      position: s.playback.position,
+      totalFrames: s.playback.frames.length,
+      sessionName: s.playback.sessionInfo?.name || "Session",
+      seekPlayback: s.seekPlayback,
+      tickPlayback: s.tickPlayback,
+      togglePlaybackPause: s.togglePlaybackPause,
+      setPlaybackSpeed: s.setPlaybackSpeed,
+      stopPlayback: s.stopPlayback,
+    }))
+  );
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -252,22 +268,16 @@ export const PlaybackTimeline: React.FC = () => {
             </div>
           )}
 
-          {/* Radix UI Slider — proper accessible scrubber */}
-          <SliderPrimitive.Root
-            className="relative flex w-full touch-none select-none items-center"
-            style={{ height: 32 }}
+          {/* Accessible scrubber */}
+          <Slider
             min={0}
             max={Math.max(0, totalFrames - 1)}
             step={1}
             value={[position]}
             onValueChange={(val) => seekPlayback(val[0])}
             aria-label="Playback position"
-          >
-            <SliderPrimitive.Track className="relative h-1.5 w-full grow overflow-hidden rounded-full bg-[rgba(var(--ui-fg),0.08)] group-hover:h-2 transition-all duration-150">
-              <SliderPrimitive.Range className="absolute h-full rounded-full bg-(--accent-cyan) transition-[width] duration-75" />
-            </SliderPrimitive.Track>
-            <SliderPrimitive.Thumb className="block h-3 w-3 rounded-full border-2 border-(--accent-cyan) bg-(--page-bg) shadow-[0_0_8px_rgba(0,212,245,0.4)] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-cyan) focus-visible:ring-offset-1 focus-visible:ring-offset-(--page-bg) hover:scale-125 hover:shadow-[0_0_12px_rgba(0,212,245,0.6)] cursor-pointer opacity-0 group-hover:opacity-100" />
-          </SliderPrimitive.Root>
+            style={{ height: 32 }}
+          />
         </div>
 
         {/* Controls row: transport + speed + stop */}

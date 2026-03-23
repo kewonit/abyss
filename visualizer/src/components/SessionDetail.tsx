@@ -103,7 +103,7 @@ export const SessionDetail: React.FC = () => {
         const [s, fr, fl, ds, pr] = await Promise.all([
           getSession(selectedSessionId),
           getSessionFrames(selectedSessionId, { maxPoints: 500 }),
-          getSessionFlows(selectedSessionId, { limit: 5000 }),
+          getSessionFlows(selectedSessionId, { limit: 200 }),
           getSessionDestinations(selectedSessionId, { limit: 50 }),
           getProcessUsage(selectedSessionId, { limit: 500 }),
         ]);

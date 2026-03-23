@@ -18,6 +18,8 @@ class RingBuffer {
   private buf: Float64Array;
   private head = 0;
   private count = 0;
+  private dirty = true;
+  private cached: number[] = [];
 
   constructor(private capacity: number) {
     this.buf = new Float64Array(capacity);
@@ -27,22 +29,31 @@ class RingBuffer {
     this.buf[this.head] = value;
     this.head = (this.head + 1) % this.capacity;
     if (this.count < this.capacity) this.count++;
+    this.dirty = true;
   }
 
-  /** Reset the buffer to empty. */
   clear(): void {
     this.head = 0;
     this.count = 0;
+    this.dirty = true;
+    this.cached = [];
   }
 
-  /** Returns a new array in chronological order (for Sparkline rendering). */
+  /** Returns cached array in chronological order. Only rebuilds after push(). */
   toArray(): number[] {
-    if (this.count === 0) return [];
+    if (!this.dirty) return this.cached;
+    if (this.count === 0) {
+      this.cached = [];
+      this.dirty = false;
+      return this.cached;
+    }
     const result = new Array<number>(this.count);
     const start = (this.head - this.count + this.capacity) % this.capacity;
     for (let i = 0; i < this.count; i++) {
       result[i] = this.buf[(start + i) % this.capacity];
     }
+    this.cached = result;
+    this.dirty = false;
     return result;
   }
 }
@@ -80,6 +91,12 @@ interface TelemetryState {
   recording: boolean;
   currentSessionId: string | null;
   setRecording: (recording: boolean, sessionId?: string | null) => void;
+
+  // ── Visibility / background mode ──
+  isVisible: boolean;
+  setVisible: (v: boolean) => void;
+  savedGlobePov: { lat: number; lng: number; altitude: number } | null;
+  setSavedGlobePov: (pov: { lat: number; lng: number; altitude: number } | null) => void;
 
   // ── Playback mode ──
   playback: {
@@ -285,6 +302,12 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
   currentSessionId: null,
   setRecording: (recording, sessionId) => set({ recording, currentSessionId: sessionId ?? null }),
 
+  // ── Visibility / background mode ──
+  isVisible: true,
+  savedGlobePov: null,
+  setVisible: (v) => set({ isVisible: v }),
+  setSavedGlobePov: (pov) => set({ savedGlobePov: pov }),
+
   // ── Playback mode ──
   playback: {
     active: false,
@@ -358,6 +381,9 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
   stopPlayback: () =>
     set({
       view: "live" as AppView,
+      frame: null,
+      derived: EMPTY_DERIVED,
+      flows: [],
       playback: {
         active: false,
         paused: false,
@@ -392,11 +418,10 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
       const clamped = Math.max(0, Math.min(index, frames.length - 1));
       const fr = frames[clamped];
 
-      // Use a sliding window of ±2 frames to collect flows — prevents empty
-      // state on sparse recordings where some frames have 0 associated flows.
+      // Sliding window of ±1 frames to collect flows for sparse recordings
       const windowFlows: PlaybackFlowRecord[] = [];
-      const windowStart = Math.max(0, clamped - 2);
-      const windowEnd = Math.min(frames.length - 1, clamped + 2);
+      const windowStart = Math.max(0, clamped - 1);
+      const windowEnd = Math.min(frames.length - 1, clamped + 1);
       for (let i = windowStart; i <= windowEnd; i++) {
         const fls = flowsByFrame.get(frames[i].frameId) ?? [];
         windowFlows.push(...fls);
@@ -425,10 +450,10 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
       const { frames, flowsByFrame, localLat, localLng } = s.playback;
       const fr = frames[next];
 
-      // Use a sliding window of ±2 frames to collect flows — same as seekPlayback
+      // Sliding window of ±1 frames
       const windowFlows: PlaybackFlowRecord[] = [];
-      const windowStart = Math.max(0, next - 2);
-      const windowEnd = Math.min(frames.length - 1, next + 2);
+      const windowStart = Math.max(0, next - 1);
+      const windowEnd = Math.min(frames.length - 1, next + 1);
       for (let i = windowStart; i <= windowEnd; i++) {
         const fls = flowsByFrame.get(frames[i].frameId) ?? [];
         windowFlows.push(...fls);

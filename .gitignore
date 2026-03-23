@@ -48,6 +48,9 @@ target/
 
 # Logs
 *.log
+
+# Refactoring plans (local only)
+.refactor/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

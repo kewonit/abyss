@@ -390,6 +390,12 @@ impl WriterState {
             self.seen_dest_ips.insert(flow.dst.ip.clone(), true);
         }
 
+        // Cap to prevent unbounded growth in long sessions.
+        // Clearing causes harmless duplicate upserts — DB handles idempotently.
+        if self.seen_dest_ips.len() > 5000 {
+            self.seen_dest_ips.clear();
+        }
+
         if let Err(e) = conn.execute_batch("COMMIT;") {
             eprintln!("[Abyss][writer] commit dest tx failed: {e}");
             let _ = conn.execute_batch("ROLLBACK;");

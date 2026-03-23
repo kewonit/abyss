@@ -18,49 +18,28 @@ import { formatDataSize, formatDuration, formatDateWithYear, countryFlag } from 
 import { Button } from "./ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Skeleton } from "./ui/skeleton";
+import { useAsyncData } from "../lib/hooks";
 
 type TimeRange = 7 | 30 | 0;
 
 export const AnalyticsDashboard: React.FC = () => {
   const setView = useTelemetryStore((s) => s.setView);
 
-  const [stats, setStats] = useState<GlobalStats | null>(null);
-  const [daily, setDaily] = useState<DailyUsage[]>([]);
-  const [destinations, setDestinations] = useState<TopDestination[]>([]);
-  const [apps, setApps] = useState<TopApp[]>([]);
   const [range, setRange] = useState<TimeRange>(30);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-
-    Promise.all([
-      getGlobalStats(),
-      getDailyUsage(range),
-      getTopDestinations(range, 15),
-      getTopApps(range, 15),
-    ])
-      .then(([s, d, dest, a]) => {
-        if (cancelled) return;
-        setStats(s);
-        setDaily(d);
-        setDestinations(dest);
-        setApps(a);
-      })
-      .catch((e) => {
-        if (!cancelled) setError(String(e));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [range]);
+  const { data, loading, error } = useAsyncData(
+    () =>
+      Promise.all([
+        getGlobalStats(),
+        getDailyUsage(range),
+        getTopDestinations(range, 15),
+        getTopApps(range, 15),
+      ]).then(([stats, daily, destinations, apps]) => ({ stats, daily, destinations, apps })),
+    [range]
+  );
+  const stats = data?.stats ?? null;
+  const daily = data?.daily ?? [];
+  const destinations = data?.destinations ?? [];
+  const apps = data?.apps ?? [];
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

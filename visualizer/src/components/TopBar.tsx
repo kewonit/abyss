@@ -10,6 +10,7 @@ import {
   Bell,
   AlertTriangle,
 } from "lucide-react";
+import { useShallow } from "zustand/react/shallow";
 import { useTelemetryStore } from "../telemetry/store";
 import {
   getGlobalStats,
@@ -43,14 +44,17 @@ import { ScrollArea } from "./ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
 
 export const TopBar: React.FC = () => {
-  // Primitive selectors — only re-render when the actual number changes,
-  // not on every frame when the parent object reference changes.
-  const recording = useTelemetryStore((s) => s.recording);
-  const currentSessionId = useTelemetryStore((s) => s.currentSessionId);
-  const toggleDrawer = useTelemetryStore((s) => s.toggleDrawer);
-  const drawerOpen = useTelemetryStore((s) => s.drawerOpen);
-  const view = useTelemetryStore((s) => s.view);
-  const setView = useTelemetryStore((s) => s.setView);
+  const { recording, currentSessionId, toggleDrawer, drawerOpen, view, setView } =
+    useTelemetryStore(
+      useShallow((s) => ({
+        recording: s.recording,
+        currentSessionId: s.currentSessionId,
+        toggleDrawer: s.toggleDrawer,
+        drawerOpen: s.drawerOpen,
+        view: s.view,
+        setView: s.setView,
+      }))
+    );
   const [clock, setClock] = useState("");
   const [darkMode, setDarkMode] = useState(() => {
     try {
@@ -105,7 +109,7 @@ export const TopBar: React.FC = () => {
     } catch {
       /* corrupted localStorage */
     }
-    return { enabled: false, days: 30 };
+    return { enabled: true, days: 30 };
   });
   const [autoCleanupMax, setAutoCleanupMax] = useState(() => {
     try {
@@ -444,10 +448,14 @@ export const TopBar: React.FC = () => {
         </div>
       </div>
 
-      {/* Bottom-left controls — only shown on map views, positioned above the stats strip */}
+      {/* Bottom-left controls */}
       {(view === "live" || view === "playback") && (
         <div
-          className={`absolute left-4 flex flex-col gap-2.5 ${view === "live" ? "bottom-33" : "bottom-4"}`}
+          className={`absolute left-4 z-40 flex flex-col gap-2.5 ${
+            view === "live"
+              ? "bottom-[calc(1rem+9.5rem+1rem)]"
+              : "bottom-[calc(0.625rem+clamp(7.5rem,18vh,10rem)+1rem)]"
+          }`}
         >
           <div className="flex items-center gap-2">
             <Tooltip>

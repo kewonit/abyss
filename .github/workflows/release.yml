@@ -54,7 +54,7 @@ jobs:
             rust-targets: aarch64-apple-darwin
             args: --target aarch64-apple-darwin
           - platform: macos-intel
-            os: macos-13
+            os: macos-latest
             rust-targets: x86_64-apple-darwin
             args: --target x86_64-apple-darwin
           - platform: windows
