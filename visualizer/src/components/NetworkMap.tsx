@@ -9,9 +9,8 @@ import { formatDataRate } from "../lib/utils";
 
 const DIR_COLORS = { up: "#ff7a45", down: "#00d4f5", bidi: "#b06cff" } as const;
 const INACTIVE_CABLE = "rgba(255,255,255,0.07)";
-const EARTH_IMG = "//cdn.jsdelivr.net/npm/three-globe/example/img/earth-night.jpg";
+const EARTH_IMG = "/earth-night.jpg";
 const CABLE_THROTTLE_MS = 3000; // only re-match cables every 3s
-const IDLE_PAUSE_MS = 5000; // pause render loop after 5s of no data
 
 // ─── Flow fingerprint — skip globe updates when nothing changed ─────────
 
@@ -72,8 +71,6 @@ export function NetworkMap() {
   const lastFpRef = useRef(""); // flow fingerprint
   const lastCableMatchRef = useRef(0); // timestamp of last cable matching
   const cachedCableIdsRef = useRef<Set<string>>(new Set());
-  const idleTimerRef = useRef<number | undefined>();
-  const isPausedRef = useRef(false);
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
 
   // ── Globe initialization ────────────────────────────────────────────────
@@ -89,7 +86,7 @@ export function NetworkMap() {
       .globeImageUrl(EARTH_IMG)
       .backgroundColor("#080810")
       .showAtmosphere(true)
-      .atmosphereColor("rgba(100,180,255,0.15)")
+      .atmosphereColor("#64b4ff")
       .atmosphereAltitude(0.12)
       .width(el.clientWidth)
       .height(el.clientHeight)
@@ -140,6 +137,21 @@ export function NetworkMap() {
 
     globeRef.current = globe;
 
+    // Performance: limit pixel ratio on High-DPI screens to reduce fragment shader load
+    const renderer = globe.renderer();
+    if (renderer) {
+      renderer.setPixelRatio(Math.min(1.5, window.devicePixelRatio));
+    }
+
+    // Controls: enable smooth damping (inertia) and prevent camera clipping inside/outside
+    const controls = globe.controls();
+    if (controls) {
+      controls.minDistance = 110;
+      controls.maxDistance = 500;
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+    }
+
     // Fly to saved POV or user's approximate location
     const savedPov = useTelemetryStore.getState().savedGlobePov;
     if (savedPov) {
@@ -175,7 +187,6 @@ export function NetworkMap() {
     // Cleanup
     return () => {
       ro.disconnect();
-      clearTimeout(idleTimerRef.current);
       useTelemetryStore.getState().setSavedGlobePov(globe.pointOfView());
       globe.pauseAnimation();
       globe.controls().dispose();
@@ -185,97 +196,112 @@ export function NetworkMap() {
     };
   }, []);
 
-  // ── Reactive flow data binding ──────────────────────────────────────────
-
-  const flows = useTelemetryStore((s) => s.flows);
+  // ── Imperative flow data binding (bypasses React re-renders) ─────────────
 
   useEffect(() => {
-    const globe = globeRef.current;
-    if (!globe) return;
+    const updateGlobeData = (flows: GeoFlow[]) => {
+      const globe = globeRef.current;
+      if (!globe) return;
 
-    // Fingerprint check — skip expensive globe updates when data is unchanged
-    const fp = flowFingerprint(flows);
-    if (fp === lastFpRef.current) return;
-    lastFpRef.current = fp;
+      // Filter, sort by bps descending, and take the top 40 flows to prevent rendering lag/stutter
+      const activeFlows = flows
+        .filter((f) => f.src && f.dst && !isNaN(f.src.lat) && !isNaN(f.dst.lat))
+        .sort((a, b) => b.bps - a.bps)
+        .slice(0, 40);
 
-    // Wake globe if it was idling
-    if (isPausedRef.current) {
-      globe.resumeAnimation();
-      isPausedRef.current = false;
-    }
+      // Fingerprint check on the rendered subset — skip expensive globe updates when visual data is unchanged
+      const fp = flowFingerprint(activeFlows);
+      if (fp === lastFpRef.current) return;
+      lastFpRef.current = fp;
 
-    // Reset idle timer
-    clearTimeout(idleTimerRef.current);
-    idleTimerRef.current = window.setTimeout(() => {
-      if (globeRef.current) {
-        globeRef.current.pauseAnimation();
-        isPausedRef.current = true;
+
+
+      // Build points and arcs
+      const srcSeen = new Set<string>();
+      const points: {
+        lat: number;
+        lng: number;
+        size: number;
+        color: string;
+        flow: GeoFlow | null;
+      }[] = [];
+      const arcs: {
+        srcLat: number;
+        srcLng: number;
+        dstLat: number;
+        dstLng: number;
+        color: [string, string];
+      }[] = [];
+
+      for (const f of activeFlows) {
+        const sk = `${f.src.lat.toFixed(1)}_${f.src.lng.toFixed(1)}`;
+        if (!srcSeen.has(sk)) {
+          srcSeen.add(sk);
+          points.push({ lat: f.src.lat, lng: f.src.lng, size: 0.5, color: "#ffffff", flow: null });
+        }
+
+        const c = DIR_COLORS[f.dir] || DIR_COLORS.bidi;
+        points.push({
+          lat: f.dst.lat,
+          lng: f.dst.lng,
+          size: Math.min(0.4, 0.1 + f.bps / 1_000_000),
+          color: c,
+          flow: f,
+        });
+
+        arcs.push({
+          srcLat: f.src.lat,
+          srcLng: f.src.lng,
+          dstLat: f.dst.lat,
+          dstLng: f.dst.lng,
+          color: [`${c}99`, `${c}22`],
+        });
       }
-    }, IDLE_PAUSE_MS);
 
-    // Build points and arcs
-    const srcSeen = new Set<string>();
-    const points: {
-      lat: number;
-      lng: number;
-      size: number;
-      color: string;
-      flow: GeoFlow | null;
-    }[] = [];
-    const arcs: {
-      srcLat: number;
-      srcLng: number;
-      dstLat: number;
-      dstLng: number;
-      color: [string, string];
-    }[] = [];
+      globe.pointsData(points);
+      globe.arcsData(arcs);
 
-    for (const f of flows) {
-      if (!f.src || !f.dst || isNaN(f.src.lat) || isNaN(f.dst.lat)) continue;
+      // Throttled cable matching — at most once per CABLE_THROTTLE_MS
+      const cables = cablesRef.current;
+      if (cables.length > 0) {
+        const now = Date.now();
+        if (now - lastCableMatchRef.current >= CABLE_THROTTLE_MS) {
+          lastCableMatchRef.current = now;
+          const activeIds = matchActiveCables(activeFlows, cables);
 
-      const sk = `${f.src.lat.toFixed(1)}_${f.src.lng.toFixed(1)}`;
-      if (!srcSeen.has(sk)) {
-        srcSeen.add(sk);
-        points.push({ lat: f.src.lat, lng: f.src.lng, size: 0.5, color: "#ffffff", flow: null });
+          // Check if the set of active IDs is different from cached
+          let changed = activeIds.size !== cachedCableIdsRef.current.size;
+          if (!changed) {
+            for (const id of activeIds) {
+              if (!cachedCableIdsRef.current.has(id)) {
+                changed = true;
+                break;
+              }
+            }
+          }
+
+          if (changed) {
+            cachedCableIdsRef.current = activeIds;
+            globe
+              .pathColor((p: any) => (activeIds.has(p.id) ? `${p.color}cc` : INACTIVE_CABLE))
+              .pathDashLength((p: any) => (activeIds.has(p.id) ? 0.1 : 0))
+              .pathDashGap((p: any) => (activeIds.has(p.id) ? 0.008 : 0))
+              .pathDashAnimateTime((p: any) => (activeIds.has(p.id) ? 12000 : 0));
+          }
+        }
       }
+    };
 
-      const c = DIR_COLORS[f.dir] || DIR_COLORS.bidi;
-      points.push({
-        lat: f.dst.lat,
-        lng: f.dst.lng,
-        size: Math.min(0.4, 0.1 + f.bps / 1_000_000),
-        color: c,
-        flow: f,
-      });
+    // Run initial update
+    updateGlobeData(useTelemetryStore.getState().flows);
 
-      arcs.push({
-        srcLat: f.src.lat,
-        srcLng: f.src.lng,
-        dstLat: f.dst.lat,
-        dstLng: f.dst.lng,
-        color: [`${c}99`, `${c}22`],
-      });
-    }
+    // Subscribe to store changes imperatively to bypass React re-renders
+    const unsubscribe = useTelemetryStore.subscribe((state) => {
+      updateGlobeData(state.flows);
+    });
 
-    globe.pointsData(points);
-    globe.arcsData(arcs);
-
-    // Throttled cable matching — at most once per CABLE_THROTTLE_MS
-    const cables = cablesRef.current;
-    if (cables.length > 0) {
-      const now = Date.now();
-      if (now - lastCableMatchRef.current >= CABLE_THROTTLE_MS) {
-        lastCableMatchRef.current = now;
-        cachedCableIdsRef.current = matchActiveCables(flows, cables);
-      }
-      const activeIds = cachedCableIdsRef.current;
-      globe
-        .pathColor((p: any) => (activeIds.has(p.id) ? `${p.color}cc` : INACTIVE_CABLE))
-        .pathDashLength((p: any) => (activeIds.has(p.id) ? 0.1 : 0))
-        .pathDashGap((p: any) => (activeIds.has(p.id) ? 0.008 : 0))
-        .pathDashAnimateTime((p: any) => (activeIds.has(p.id) ? 12000 : 0));
-    }
-  }, [flows]);
+    return () => unsubscribe();
+  }, []);
 
   // ── Custom window events ────────────────────────────────────────────────
 
