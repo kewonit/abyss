@@ -518,7 +518,7 @@ export const TopBar: React.FC = () => {
                   <div style={{ paddingTop: 8, paddingBottom: 8 }} className="flex flex-col gap-3">
                     {/* ── General Tab ── */}
                     {settingsTab === "general" && (
-                      <div className="flex flex-col gap-3 tab-content-enter">
+                      <div className="flex flex-col gap-3 tab-content-enter shrink-0">
                         {/* DB path */}
                         {dbPath && (
                           <div
@@ -550,7 +550,7 @@ export const TopBar: React.FC = () => {
 
                     {/* ── Appearance Tab ── */}
                     {settingsTab === "appearance" && (
-                      <div className="flex flex-col gap-3 tab-content-enter">
+                      <div className="flex flex-col gap-3 tab-content-enter shrink-0">
                         <div
                           style={{ padding: "14px 16px" }}
                           className="flex items-center justify-between bg-[rgba(var(--ui-fg),0.03)] rounded-xl border border-[rgba(var(--ui-fg),0.05)]"
@@ -570,7 +570,7 @@ export const TopBar: React.FC = () => {
 
                     {/* ── Notifications Tab ── */}
                     {settingsTab === "notifications" && (
-                      <div className="flex flex-col gap-3 tab-content-enter">
+                      <div className="flex flex-col gap-3 tab-content-enter shrink-0">
                         <div
                           style={{ padding: "14px 16px" }}
                           className="flex items-center justify-between bg-[rgba(var(--ui-fg),0.03)] rounded-xl border border-[rgba(var(--ui-fg),0.05)]"
@@ -596,12 +596,12 @@ export const TopBar: React.FC = () => {
 
                     {/* ── Storage Tab ── */}
                     {settingsTab === "storage" && (
-                      <div className="flex flex-col gap-3 tab-content-enter">
+                      <div className="flex flex-col gap-3 tab-content-enter shrink-0">
                         {/* Stats summary */}
                         {stats && (
                           <div
                             style={{ padding: "12px 16px" }}
-                            className="grid grid-cols-3 gap-3 bg-[rgba(var(--ui-fg),0.03)] rounded-xl border border-[rgba(var(--ui-fg),0.05)]"
+                            className="grid grid-cols-3 gap-3 bg-[rgba(var(--ui-fg),0.03)] rounded-xl border border-[rgba(var(--ui-fg),0.05)] shrink-0"
                           >
                             <div className="flex flex-col gap-0.5">
                               <span className="text-[14px] font-semibold tracking-[0.8px] uppercase text-[rgba(var(--ui-fg),0.35)]">
@@ -642,7 +642,7 @@ export const TopBar: React.FC = () => {
                         {/* Auto-cleanup: age */}
                         <div
                           style={{ padding: "12px 16px" }}
-                          className="flex items-center justify-between bg-[rgba(var(--ui-fg),0.03)] rounded-xl border border-[rgba(var(--ui-fg),0.05)]"
+                          className="flex items-center justify-between bg-[rgba(var(--ui-fg),0.03)] rounded-xl border border-[rgba(var(--ui-fg),0.05)] shrink-0"
                         >
                           <div className="flex flex-col gap-0.5" style={{ flex: 1 }}>
                             <span className="text-[15px] font-medium text-[rgba(var(--ui-fg),0.9)]">
@@ -688,7 +688,7 @@ export const TopBar: React.FC = () => {
                         {/* Auto-cleanup: max count */}
                         <div
                           style={{ padding: "12px 16px" }}
-                          className="flex items-center justify-between bg-[rgba(var(--ui-fg),0.03)] rounded-xl border border-[rgba(var(--ui-fg),0.05)]"
+                          className="flex items-center justify-between bg-[rgba(var(--ui-fg),0.03)] rounded-xl border border-[rgba(var(--ui-fg),0.05)] shrink-0"
                         >
                           <div className="flex flex-col gap-0.5" style={{ flex: 1 }}>
                             <span className="text-[15px] font-medium text-[rgba(var(--ui-fg),0.9)]">

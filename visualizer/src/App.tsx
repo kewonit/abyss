@@ -22,7 +22,6 @@ import { TooltipProvider } from "./components/ui/tooltip";
 import { useTelemetryStore } from "./telemetry/store";
 import type { TelemetryFrame } from "./telemetry/schema";
 import { startSession, stopSession } from "./telemetry/sessions";
-import { releaseCables } from "./telemetry/cables";
 
 export default function App() {
   const {
@@ -65,7 +64,6 @@ export default function App() {
       clearTimeout(timer);
       timer = window.setTimeout(() => {
         setVisible(visible);
-        if (!visible) releaseCables();
       }, 300);
     };
     const onVisChange = () => apply(document.visibilityState === "visible");
@@ -103,7 +101,6 @@ export default function App() {
       .then(({ listen }) => {
         if (!active) return;
         listen<TelemetryFrame>("telemetry-frame", (event) => {
-          if (!useTelemetryStore.getState().isVisible) return;
           ingestFrame(event.payload);
           setConnected(true);
         }).then((unlisten) => {
@@ -186,7 +183,7 @@ export default function App() {
       >
         {/* NetworkMap rendered once for both live & playback — avoids full map
             destruction / re-creation when switching between these views */}
-        {isVisible && (view === "live" || view === "playback") && (
+        {(view === "live" || view === "playback") && (
           <Suspense fallback={<div className="w-full h-full bg-[#080810]" />}>
             <NetworkMap />
           </Suspense>
